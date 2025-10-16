@@ -54,6 +54,12 @@ const llmRequestDuration = new client.Histogram({
   buckets: [0.25, 0.5, 1, 2, 4, 8, 12],
   registers: [register],
 });
+const crispSendCounter = new client.Counter({
+  name: 'crisp_send_total',
+  help: 'Total number of Crisp send attempts',
+  labelNames: ['status'],
+  registers: [register],
+});
 
 app.use((req, res, next) => {
   const endTimer = httpRequestDuration.startTimer({ method: req.method, path: req.path });
@@ -183,6 +189,17 @@ app.post('/crisp/webhook', async (req, res) => {
     if (flags.DRY_RUN) {
       console.log(`[CRISP][DRY] sendText conv=${conversationId}: ${response}`);
       console.log(`[CRISP][DRY] Intent: ${intentResult.intent}, Confidence: ${intentResult.confidence}`);
+    } else {
+      // Live send to Crisp
+      const { sendText } = require('./tools/crisp_send');
+      try {
+        const websiteId = process.env.CRISP_WEBSITE_ID;
+        await sendText({ websiteId, conversationId, text: response });
+        crispSendCounter.inc({ status: 'ok' });
+      } catch (e) {
+        crispSendCounter.inc({ status: 'error' });
+        console.error('Crisp send error:', e.message);
+      }
     }
 
     // Append lead on booking/pricing intents (demo-safe)
