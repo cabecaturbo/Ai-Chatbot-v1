@@ -1,0 +1,55 @@
+﻿{
+  "name": "netia-bot-safe",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "check:health": "node tests/check.mjs health",
+    "check:webhook": "node tests/check.mjs webhook",
+    "test:conversations": "npx tsx tests/run.ts",
+    "test:conversations:live": "npx tsx tests/run.ts --live",
+    "test:load": "node tests/load.mjs",
+    "lint": "eslint \"src/**/*.js\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "postinstall": "simple-git-hooks"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5",
+    "js-yaml": "^4.1.0",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.3.0",
+    "ajv": "^8.17.1",
+    "prom-client": "^15.1.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "tsx": "^4.7.0",
+    "@types/js-yaml": "^4.0.9",
+    "eslint": "^9.13.0",
+    "@eslint/js": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3",
+    "simple-git-hooks": "^2.11.1"
+  }
+  ,
+  "eslintConfig": {
+    "root": true,
+    "languageOptions": { "sourceType": "commonjs", "ecmaVersion": 2021 },
+    "plugins": [],
+    "extends": ["eslint:recommended", "prettier"],
+    "rules": {
+      "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+      "no-console": "off"
+    }
+  },
+  "prettier": {
+    "singleQuote": true,
+    "semi": true,
+    "printWidth": 100
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npm run lint && npm run format:check"
+  }
+}

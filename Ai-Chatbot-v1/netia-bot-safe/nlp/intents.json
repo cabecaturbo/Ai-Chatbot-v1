@@ -1,0 +1,8 @@
+{
+  "intents": {
+    "booking": ["book", "booking", "schedule", "appointment", "reserve"],
+    "pricing": ["price", "pricing", "cost", "rate", "plans"],
+    "faq": ["hours", "location", "support", "help", "faq"]
+  }
+}
+
