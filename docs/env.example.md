@@ -17,6 +17,14 @@ OPENAI_API_KEY=
 
 # Demo mode
 DEMO_MODE=true
+
+# Production services
+DATABASE_URL=
+REDIS_URL=
+LOG_LEVEL=info
+CORS_ORIGIN=
+CRISP_WEBHOOK_SECRET=
+OPENAI_MODEL=gpt-4o-mini
 ```
 
 Note: If your environment blocks dotfiles from being created automatically, create the file manually in your editor.

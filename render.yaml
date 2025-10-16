@@ -13,5 +13,9 @@ services:
         value: "true"
       - key: KILL_SWITCH
         value: "false"
+      - key: LOG_LEVEL
+        value: info
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
       # Add CRISP_* and OPENAI_API_KEY in dashboard when going live
 

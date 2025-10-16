@@ -19,6 +19,14 @@ Operational checks
 - When toggling `KILL_SWITCH=true`, webhook responds with `{ ok: true, skipped: true }`.
 - Check `/metrics` for request volume and latency trends.
 
+Database & cache
+- Postgres: set `DATABASE_URL`; schema initialized automatically on boot.
+- Redis (optional): set `REDIS_URL` to enable shared rate limiting across instances.
+
+Security
+- Crisp signature: set `CRISP_WEBHOOK_SECRET` to enforce webhook HMAC verification.
+- CORS: set `CORS_ORIGIN` to your web app domain(s).
+
 Incidents
 - Invalid payloads: return 400 with Ajv errors; verify payload shape.
 - Rate limits: returns 429 with standard headers; back off clients.

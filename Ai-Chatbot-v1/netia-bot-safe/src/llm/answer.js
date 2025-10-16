@@ -7,6 +7,7 @@ const DEFAULT_FALLBACK = 'Happy to help! Could you share a bit more about your r
 class NetiaLLM {
   constructor(isDryRun) {
     this.isDryRun = Boolean(isDryRun);
+    this.live = require('./openai_client');
   }
 
   async generateResponse(message, history, intentResult, context) {
@@ -28,9 +29,19 @@ class NetiaLLM {
       }
     }
 
-    // Live mode (placeholder): call your LLM provider here.
-    // Keep a simple fallback to avoid runtime failure until implemented.
-    return DEFAULT_FALLBACK;
+    // Live mode
+    try {
+      const content = await this.live.generate({
+        messages: [
+          { role: 'system', content: (context && context.systemPrompt) || '' },
+          ...history,
+          { role: 'user', content: message },
+        ],
+      });
+      return content || DEFAULT_FALLBACK;
+    } catch (_e) {
+      return DEFAULT_FALLBACK;
+    }
   }
 }
 

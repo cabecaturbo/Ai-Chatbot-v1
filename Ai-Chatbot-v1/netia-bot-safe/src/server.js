@@ -1,9 +1,13 @@
 ﻿const express = require('express');
 require('dotenv').config();
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const cors = require('cors');
 const Ajv = require('ajv');
 const client = require('prom-client');
+const { httpLogger } = require('./tools/logger');
+const { buildRateLimiter } = require('./tools/redis_rate_limit');
+const { ensureSchema, saveMessage, saveLead } = require('./tools/db');
+const { verifySignature } = require('./tools/crisp_verify');
 
 // Import the new LLM and intent detection modules
 const { NetiaLLM } = require('./llm/answer');
@@ -15,16 +19,12 @@ const { appendLead } = require('./tools/leads');
 
 const app = express();
 app.use(helmet());
+app.use(cors({ origin: process.env.CORS_ORIGIN || false }));
+app.use(httpLogger);
 app.use(express.json({ limit: '200kb' }));
 
-// Basic rate limiting to protect webhook and API
-const limiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use(limiter);
+// Redis-backed rate limiter if REDIS_URL is set
+app.use(buildRateLimiter());
 
 // Metrics setup
 const register = new client.Registry();
@@ -40,6 +40,18 @@ const httpRequestDuration = new client.Histogram({
   help: 'HTTP request duration in seconds',
   labelNames: ['method', 'path'],
   buckets: [0.025, 0.05, 0.1, 0.25, 0.5, 1, 2],
+  registers: [register],
+});
+const llmRequestCounter = new client.Counter({
+  name: 'llm_requests_total',
+  help: 'Total number of LLM requests',
+  labelNames: ['status'],
+  registers: [register],
+});
+const llmRequestDuration = new client.Histogram({
+  name: 'llm_request_duration_seconds',
+  help: 'LLM request duration in seconds',
+  buckets: [0.25, 0.5, 1, 2, 4, 8, 12],
   registers: [register],
 });
 
@@ -58,7 +70,7 @@ app.get('/health', (_req, res) => {
     status: 'ok',
     env: process.env.NODE_ENV || 'development',
     uptime_sec: uptimeSec,
-    version: process.env.APP_VERSION || '0.1.0',
+    version: process.env.APP_VERSION || process.env.GIT_SHA || '0.1.0',
   });
 });
 
@@ -100,6 +112,11 @@ app.post('/crisp/webhook', async (req, res) => {
     return res.status(200).json({ ok: true, skipped: true });
   }
 
+  const secret = process.env.CRISP_WEBHOOK_SECRET;
+  if (!verifySignature(req, secret)) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
   const payload = req.body;
   const safeLog = JSON.stringify({
     conversation_id: payload && payload.conversation_id,
@@ -127,17 +144,28 @@ app.post('/crisp/webhook', async (req, res) => {
       content: message,
       timestamp: new Date().toISOString()
     });
+    await saveMessage(conversationId, 'user', message);
     
     // Detect intent
     const intentResult = intentDetector.detectIntent(message);
     console.log('[INTENT]', JSON.stringify(intentResult));
     
-    // Generate response using LLM
-    const response = await llm.generateResponse(message, history, intentResult, {
+    // Generate response using LLM with metrics
+    const endLlmTimer = llmRequestDuration.startTimer();
+    let response;
+    try {
+      response = await llm.generateResponse(message, history, intentResult, {
       systemPrompt: getSystemPrompt(),
       faq: getFaqKb(),
       demoMode: flags.DEMO_MODE,
-    });
+      });
+      llmRequestCounter.inc({ status: 'ok' });
+    } catch (e) {
+      llmRequestCounter.inc({ status: 'error' });
+      throw e;
+    } finally {
+      endLlmTimer();
+    }
     
     // Add assistant response to history
     history.push({
@@ -145,6 +173,7 @@ app.post('/crisp/webhook', async (req, res) => {
       content: response,
       timestamp: new Date().toISOString()
     });
+    await saveMessage(conversationId, 'assistant', response);
     
     // Keep history manageable (last 20 messages)
     if (history.length > 20) {
@@ -159,6 +188,7 @@ app.post('/crisp/webhook', async (req, res) => {
     // Append lead on booking/pricing intents (demo-safe)
     if (intentResult.intent === 'booking' || intentResult.intent === 'pricing') {
       appendLead({ intent: intentResult.intent }, { dryRun: flags.DRY_RUN });
+      await saveLead(intentResult.intent);
     }
 
     return res.json({ 
@@ -188,9 +218,10 @@ app.post('/calendar/book', (req, res) => {
   res.json({ ok: true, event });
 });
 
-app.listen(flags.PORT, () => {
+app.listen(flags.PORT, async () => {
   console.log(
     `netia-bot-safe listening on port ${flags.PORT} (DRY_RUN=${flags.DRY_RUN}, KILL_SWITCH=${flags.KILL_SWITCH})`
   );
+  try { await ensureSchema(); } catch (e) { console.error('DB schema init failed:', e.message); }
 });
 

@@ -26,6 +26,7 @@ jobs:
       - name: Start server
         run: |
           cd Ai-Chatbot-v1/netia-bot-safe
+          export APP_VERSION=${{ github.sha }}
           nohup node src/server.js &
           sleep 2
       - name: Health and webhook checks
