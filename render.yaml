@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: netia-bot-safe
+    env: node
+    plan: starter
+    rootDir: Ai-Chatbot-v1/netia-bot-safe
+    buildCommand: npm ci
+    startCommand: node src/server.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DRY_RUN
+        value: "true"
+      - key: KILL_SWITCH
+        value: "false"
+      # Add CRISP_* and OPENAI_API_KEY in dashboard when going live
+

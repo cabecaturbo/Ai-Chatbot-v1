@@ -1,0 +1,38 @@
+# Node
+node_modules/
+**/node_modules/
+
+# Env
+.env
+**/.env
+.env.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+logs/
+*.log
+
+# Build
+.dist/
+dist/
+build/
+coverage/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Cursor/AI tooling
+.cursor/
+.agent-tools/
+
+# Next/Vite caches (if present)
+.next/
+.vite/
+
+# Misc
+*.local
+

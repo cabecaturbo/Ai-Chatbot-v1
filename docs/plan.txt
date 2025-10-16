@@ -1,0 +1,119 @@
+Netia AI Chatbot — Full Development Plan (Cursor Edition)
+
+PHASE 0 — SAFE BASE SETUP
+Goal: Ensure development is sandboxed and side-effect-free.
+Files: .env, src/index.ts, tests/check.mjs, package.json
+
+.env template:
+DRY_RUN=true
+KILL_SWITCH=false
+PORT=3000
+CRISP_IDENTIFIER=
+CRISP_KEY=
+CRISP_WEBSITE_ID=
+OPENAI_API_KEY=
+
+index.ts (safe health route):
+app.get('/health', (_req, res) => res.status(200).send('ok'));
+
+Check script:
+npm run dev
+npm run check:health
+npm run check:webhook
+
+Acceptance: Health endpoint works, no external calls while DRY_RUN=true.
+
+------------------------------------------------------------
+PHASE 1 — CONVERSATIONAL BRAIN
+Goal: Add intents, context, FAQ, and tests.
+Creates: config/system_prompt.txt, kb/faq.yaml, nlp/intents.json, updates answer.ts & detect.ts, adds convo tests.
+
+Acceptance:
+node tests/run.ts passes.
+Webhook replies with pricing, booking, and FAQ logic.
+
+------------------------------------------------------------
+PHASE 2 — CORE HARDENING
+Goal: Add error handling, timeouts, and safety layers.
+Features: Global error middleware, timeouts, input validation, rate limits, structured logs, KILL_SWITCH enforcement.
+
+Acceptance:
+Invalid payload → 400 JSON
+Timeout handled cleanly
+Rapid requests → 429 Retry-After
+KILL_SWITCH → friendly “temporarily paused”
+
+------------------------------------------------------------
+PHASE 3 — INTEGRATIONS
+3A. Crisp Webhook + Replies
+3B. Calendar Mock + Booking Flow
+3C. Sheets + Twilio (optional)
+Acceptance: Mock slots and eventId, appendLead logs appear.
+
+------------------------------------------------------------
+PHASE 4 — OBSERVABILITY & RUNBOOKS
+Metrics endpoint /metrics, /health shows env, uptime, version.
+docs/runbooks.md created for maintenance.
+
+Acceptance: GET /metrics returns counters, runbooks readable.
+
+------------------------------------------------------------
+PHASE 5 — SECURITY HYGIENE
+.env.example with no secrets, add security headers, limit body size, redact PII, block abuse.
+
+Acceptance: Headers visible, large body → 413, logs redact contacts.
+
+------------------------------------------------------------
+PHASE 6 — PERFORMANCE & LOAD
+Add LRU cache, memoize FAQ, load test with 200 messages / 20 convos.
+
+Acceptance: <1% errors, p95 <1.2s, cache hits logged.
+
+------------------------------------------------------------
+PHASE 7 — QUALITY GATES
+ESLint + Prettier + Husky pre-commit, tests must pass.
+
+Acceptance: No lint errors, all tests green.
+
+------------------------------------------------------------
+PHASE 8 — DEPLOYMENT (Render)
+render.yaml created for Render hosting.
+Deploy steps: push to Render, set env vars, Crisp Webhook, flip DRY_RUN=false when ready.
+
+Acceptance: Public /health 200, Crisp widget live.
+
+------------------------------------------------------------
+PHASE 9 — ROLLOUT & SLOs
+docs/rollout.md with staging → production, SLOs (99.5% uptime, p95<1.5s, <1% error rate).
+
+Acceptance: Document published, team can follow it end-to-end.
+
+------------------------------------------------------------
+PHASE 10 — SALES-READY POLISH
+Demo mode (DEMO_MODE=true), demo KB, pricing tiers, post-booking messages.
+
+Acceptance: Demo toggle shows prompts, lead flow works.
+
+------------------------------------------------------------
+DAILY GREEN CHECK ROUTINE
+1. npm run dev
+2. npm run check:health
+3. npm run check:webhook
+4. node tests/run.ts
+5. GET /metrics – counters incrementing
+6. Confirm DRY_RUN=true in .env
+7. Flip false only for release
+
+------------------------------------------------------------
+DELIVERABLES RECAP
+Core: Chatbot server + health + Crisp + OpenAI
+Context: system_prompt, FAQ YAML, intents.json
+Safety: DRY_RUN / KILL_SWITCH / error middleware
+Tests: unit + conversation + load
+Integrations: Crisp / Calendar / Sheets / SMS
+Observability: metrics + runbooks + rollout
+Security: headers + validation + redaction
+Perf: caching + load scripts
+CI & Lint: ESLint / Prettier / Husky
+Deployment: render.yaml + env vars + webhook
+Sales polish: demo mode + pricing copy

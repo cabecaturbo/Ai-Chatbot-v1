@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: |
+          cd Ai-Chatbot-v1/netia-bot-safe
+          npm ci
+      - name: Lint and format check
+        run: |
+          cd Ai-Chatbot-v1/netia-bot-safe
+          npm run lint
+          npm run format:check
+      - name: Start server
+        run: |
+          cd Ai-Chatbot-v1/netia-bot-safe
+          nohup node src/server.js &
+          sleep 2
+      - name: Health and webhook checks
+        run: |
+          cd Ai-Chatbot-v1/netia-bot-safe
+          node tests/check.mjs health
+          node tests/check.mjs webhook
+
