@@ -1,0 +1,69 @@
+datasource db { provider = "postgresql" url = env("DATABASE_URL") }
+generator client { provider = "prisma-client-js" }
+
+model Tenant {
+  id             String   @id @default(cuid())
+  name           String
+  domain         String?
+  crispWebsiteId String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  apiKeys      ApiKey[]
+  subscription Subscription?
+  profile      BusinessProfile?
+  services     Service[]
+  documents    Document[]
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Subscription {
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  stripeCustId     String
+  stripeSubId      String
+  status           String
+  currentPeriodEnd DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model BusinessProfile {
+  id                 String  @id @default(cuid())
+  tenantId           String  @unique
+  tenant             Tenant  @relation(fields: [tenantId], references: [id])
+  phone              String?
+  email              String?
+  serviceZipPrefixes String?
+  hoursJson          Json?
+  policiesJson       Json?
+}
+
+model Service {
+  id         String @id @default(cuid())
+  tenantId   String
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
+  slug       String
+  label      String
+  pricingJson Json
+}
+
+model Document {
+  id        String @id @default(cuid())
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  kind      String
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+}
+
+

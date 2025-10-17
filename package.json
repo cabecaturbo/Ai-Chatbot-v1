@@ -1,30 +1,15 @@
 {
-  "name": "netia-chatbot-server",
-  "version": "1.0.0",
-  "description": "A modern chatbot server with WebSocket support",
-  "main": "src/server.js",
+  "name": "netia",
+  "private": true,
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "jest",
-    "safe:dev": "cd Ai-Chatbot-v1/netia-bot-safe && npm run dev",
-    "safe:check:health": "cd Ai-Chatbot-v1/netia-bot-safe && npm run check:health",
-    "safe:check:webhook": "cd Ai-Chatbot-v1/netia-bot-safe && npm run check:webhook",
-    "safe:test:conversations": "cd Ai-Chatbot-v1/netia-bot-safe && npm run test:conversations",
-    "safe:test:load": "cd Ai-Chatbot-v1/netia-bot-safe && npm run test:load",
-    "prepare": "husky"
-  },
-  "keywords": ["chatbot", "websocket", "nodejs", "express"],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.4",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "dev": "concurrently -n api,admin \"npm --prefix apps/api run dev\" \"npm --prefix apps/admin run dev\"",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:admin": "npm --prefix apps/admin run dev",
+    "build": "npm --prefix apps/api run build && npm --prefix apps/admin run build",
+    "prisma:push": "npm --prefix apps/api run prisma:push",
+    "start": "npm --prefix apps/api run start"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "husky": "^9.1.6"
+    "concurrently": "^8.2.2"
   }
 }
