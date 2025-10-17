@@ -11,7 +11,8 @@
     "safe:check:health": "cd Ai-Chatbot-v1/netia-bot-safe && npm run check:health",
     "safe:check:webhook": "cd Ai-Chatbot-v1/netia-bot-safe && npm run check:webhook",
     "safe:test:conversations": "cd Ai-Chatbot-v1/netia-bot-safe && npm run test:conversations",
-    "safe:test:load": "cd Ai-Chatbot-v1/netia-bot-safe && npm run test:load"
+    "safe:test:load": "cd Ai-Chatbot-v1/netia-bot-safe && npm run test:load",
+    "prepare": "husky"
   },
   "keywords": ["chatbot", "websocket", "nodejs", "express"],
   "author": "",
@@ -23,6 +24,7 @@
     "dotenv": "^16.3.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "husky": "^9.1.6"
   }
 }

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Netia Chatbot</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; margin: 0; padding: 40px; color: #111; }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    h1 { margin: 0 0 12px; font-weight: 650; }
+    p { color: #444; line-height: 1.5; }
+    .links { margin: 24px 0; }
+    .links a { display: inline-block; margin-right: 16px; }
+    code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; }
+  </style>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' https://client.crisp.chat; connect-src 'self' https://client.crisp.chat https://storage.crisp.chat; frame-src 'self' https://client.crisp.chat;">
+</head>
+<body>
+  <div class="wrap">
+    <h1>Netia Chatbot</h1>
+    <p>Welcome. Use the links below to verify the service is healthy.</p>
+    <p class="links">
+      <a href="/health">/health</a>
+      <a href="/metrics">/metrics</a>
+      <a href="/calendar/slots">/calendar/slots</a>
+    </p>
+    <p>If you set <code>CRISP_WEBSITE_ID</code> in the environment, the Crisp chat bubble appears automatically.</p>
+  </div>
+
+  <script>
+    (function() {
+      var WEBSITE_ID = "__CRISP_WEBSITE_ID__";
+      if (WEBSITE_ID && WEBSITE_ID.length > 0) {
+        window.$crisp = []; window.CRISP_WEBSITE_ID = WEBSITE_ID;
+        var d = document; var s = d.createElement("script");
+        s.src = "https://client.crisp.chat/l.js"; s.async = 1; d.getElementsByTagName("head")[0].appendChild(s);
+      }
+    })();
+  </script>
+</body>
+</html>
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Netia Chatbot</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: #0b1020; color: #fff; }
+      .container { display: grid; place-items: center; min-height: 100vh; padding: 48px 16px; }
+      .card { background: #121b3a; border: 1px solid #1e2a57; border-radius: 12px; max-width: 720px; width: 100%; padding: 32px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+      h1 { margin: 0 0 12px; font-size: 28px; }
+      p { margin: 0 0 16px; line-height: 1.6; color: #c8d2ff; }
+      .meta { opacity: 0.7; font-size: 12px; margin-top: 8px; }
+      .cta { margin-top: 20px; display: inline-block; background: #3b82f6; color: #fff; text-decoration: none; padding: 10px 16px; border-radius: 8px; }
+      .cta:hover { background: #2563eb; }
+      code { background: #0b1020; padding: 2px 6px; border-radius: 6px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>Netia Chatbot</h1>
+        <p>This is your Netia Chatbot service. The Crisp widget is embedded so visitors can chat with you immediately.</p>
+        <p class="meta">Set <code>CRISP_WEBSITE_ID</code> in your environment to enable the widget.</p>
+        <a class="cta" href="/health">Check Health</a>
+        <a class="cta" href="/metrics" style="margin-left:8px;">View Metrics</a>
+      </div>
+    </div>
+
+    <script type="text/javascript">window.$crisp=[];window.CRISP_WEBSITE_ID="__CRISP_WEBSITE_ID__";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();</script>
+  </body>
+  </html>
+
+

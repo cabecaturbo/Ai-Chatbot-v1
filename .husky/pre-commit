@@ -1,0 +1,3 @@
+npx --no -- prettier --check .
+npx --no -- eslint "Ai-Chatbot-v1/netia-bot-safe/src/**/*.js"
+

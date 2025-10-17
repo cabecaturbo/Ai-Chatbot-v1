@@ -34,4 +34,8 @@ jobs:
           cd Ai-Chatbot-v1/netia-bot-safe
           node tests/check.mjs health
           node tests/check.mjs webhook
+      - name: Conversation tests
+        run: |
+          cd Ai-Chatbot-v1/netia-bot-safe
+          node tests/run.mjs
 

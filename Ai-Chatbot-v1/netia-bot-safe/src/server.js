@@ -1,6 +1,7 @@
 ﻿const express = require('express');
 require('dotenv').config();
 const helmet = require('helmet');
+const path = require('path');
 const cors = require('cors');
 const Ajv = require('ajv');
 const client = require('prom-client');
@@ -18,10 +19,50 @@ const { generateSlots, createEvent } = require('./flows/calendar');
 const { appendLead } = require('./tools/leads');
 
 const app = express();
-app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN || false }));
+app.set('trust proxy', 1);
+
+// Redirect any non-API browser request on apex to Framer; keep API routes on apex
+app.use((req, res, next) => {
+  const host = (req.headers.host || '').split(':')[0];
+  const isBrowserMethod = req.method === 'GET' || req.method === 'HEAD';
+  const apiPaths = new Set(['/health', '/metrics', '/crisp/webhook', '/calendar/slots', '/calendar/book']);
+  if (host === 'netia.ai' && isBrowserMethod && !apiPaths.has(req.path)) {
+    const target = 'https://www.netia.ai' + req.originalUrl;
+    return res.redirect(301, target);
+  }
+  next();
+});
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "script-src": ["'self'", "https://client.crisp.chat"],
+      "connect-src": ["'self'", "https://client.crisp.chat", "https://storage.crisp.chat"],
+      "img-src": ["'self'", "data:", "https://storage.crisp.chat"],
+      "frame-src": ["'self'", "https://client.crisp.chat"],
+    }
+  }
+}));
+// Robust CORS: allow comma-separated list of origins via CORS_ORIGIN
+const allowedOrigins = String(process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // allow non-browser or same-origin
+    if (allowedOrigins.length === 0) return callback(null, false);
+    return callback(null, allowedOrigins.includes(origin));
+  }
+}));
 app.use(httpLogger);
-app.use(express.json({ limit: '200kb' }));
+// Capture raw body for HMAC verification (e.g., Crisp webhooks)
+app.use(express.json({
+  limit: '200kb',
+  verify: (req, _res, buf) => {
+    try { req.rawBody = buf.toString('utf8'); } catch (_) { /* noop */ }
+  }
+}));
 
 // Redis-backed rate limiter if REDIS_URL is set
 app.use(buildRateLimiter());
@@ -85,6 +126,21 @@ app.get('/metrics', async (_req, res) => {
   res.end(await register.metrics());
 });
 
+// Serve landing page and static assets
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/', (_req, res) => {
+  try {
+    const fs = require('fs');
+    const htmlPath = path.join(__dirname, 'public', 'index.html');
+    let html = fs.readFileSync(htmlPath, 'utf8');
+    html = html.replace('__CRISP_WEBSITE_ID__', String(process.env.CRISP_WEBSITE_ID || ''));
+    res.set('Content-Type', 'text/html');
+    return res.status(200).send(html);
+  } catch (e) {
+    return res.status(500).send('Landing unavailable');
+  }
+});
+
 const flags = {
   DRY_RUN: process.env.DRY_RUN !== 'false',
   KILL_SWITCH: process.env.KILL_SWITCH === 'true',
@@ -112,6 +168,27 @@ const crispWebhookSchema = {
 };
 const validateCrisp = ajv.compile(crispWebhookSchema);
 
+function normalizeCrispPayload(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  // If already in internal format
+  if (payload.conversation_id && payload.message) {
+    return {
+      conversation_id: String(payload.conversation_id),
+      message: String(payload.message),
+    };
+  }
+  const event = payload.event || payload.type;
+  const sessionId = payload.session_id || payload.conversation_id || (payload.data && payload.data.session_id);
+  let text = '';
+  if (payload.data && typeof payload.data === 'object') {
+    text = payload.data.text || payload.data.content || payload.data.message || (payload.data.block && payload.data.block.text) || '';
+  }
+  if (event && sessionId && text) {
+    return { conversation_id: String(sessionId), message: String(text) };
+  }
+  return null;
+}
+
 app.post('/crisp/webhook', async (req, res) => {
   if (flags.KILL_SWITCH) {
     console.log('[KILL_SWITCH] Request ignored. Returning 200.');
@@ -123,7 +200,11 @@ app.post('/crisp/webhook', async (req, res) => {
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
-  const payload = req.body;
+  const incoming = req.body;
+  const payload = normalizeCrispPayload(incoming);
+  if (!payload) {
+    return res.status(400).json({ error: 'Invalid payload', details: 'Unsupported Crisp webhook format' });
+  }
   const safeLog = JSON.stringify({
     conversation_id: payload && payload.conversation_id,
     message: payload && redactPII(payload.message),

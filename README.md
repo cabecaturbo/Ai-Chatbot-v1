@@ -38,7 +38,7 @@ npm run safe:check:webhook
 ## API Endpoints (safe service)
 
 - `GET /health` - Health check
-- `GET /metrics` - Prometheus metrics
+- `GET /metrics` - Prometheus metrics (includes HTTP and LLM metrics)
 - `POST /crisp/webhook` - Crisp webhook handler
 - `GET /calendar/slots` - Mock availability
 - `POST /calendar/book` - Mock booking (returns eventId)
@@ -78,3 +78,9 @@ Set environment variables in `.env`:
 - `DRY_RUN` - true to disable external effects
 - `KILL_SWITCH` - true to pause webhook logic
 - `DEMO_MODE` - true to enable demo templates
+- `OPENAI_API_KEY`, `OPENAI_MODEL` - LLM live mode
+- `DATABASE_URL` - Postgres connection
+- `REDIS_URL` - Redis connection (rate limiting)
+- `CORS_ORIGIN` - Allowed origin(s)
+- `CRISP_IDENTIFIER`, `CRISP_KEY`, `CRISP_WEBSITE_ID` - Crisp credentials
+- `CRISP_WEBHOOK_SECRET` - Verify webhook signatures
