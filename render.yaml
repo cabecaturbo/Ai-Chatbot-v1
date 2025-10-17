@@ -3,7 +3,7 @@ services:
     name: netia-bot-safe
     env: node
     plan: starter
-    rootDir: Ai-Chatbot-v1/netia-bot-safe
+    rootDir: netia-bot-safe
     buildCommand: npm ci
     startCommand: node src/server.js
     envVars:

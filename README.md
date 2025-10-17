@@ -1,11 +1,13 @@
 # Netia Chatbot Server
 
-Primary service: `Ai-Chatbot-v1/netia-bot-safe` (safe-by-default webhook server). Use root scripts:
+Production-ready AI chatbot service with Crisp integration, calendar booking, and lead capture.
 
-```
-npm run safe:dev
-npm run safe:check:health
-npm run safe:check:webhook
+## Quick Start
+
+```bash
+npm run dev
+npm run check:health
+npm run check:webhook
 ```
 
 ## Features
@@ -35,11 +37,12 @@ npm run safe:check:webhook
    npm start    # for production
    ```
 
-## API Endpoints (safe service)
+## API Endpoints
 
 - `GET /health` - Health check
 - `GET /metrics` - Prometheus metrics (includes HTTP and LLM metrics)
 - `POST /crisp/webhook` - Crisp webhook handler
+- `POST /chat` - Public chat API
 - `GET /calendar/slots` - Mock availability
 - `POST /calendar/book` - Mock booking (returns eventId)
 
