@@ -23,11 +23,12 @@ app.set('trust proxy', 1);
 
 // Redirect any non-API browser request on apex to Framer; keep API routes on apex
 app.use((req, res, next) => {
-  const host = (req.headers.host || '').split(':')[0];
+  const host = String(req.headers.host || '').split(':')[0].toLowerCase();
   const isBrowserMethod = req.method === 'GET' || req.method === 'HEAD';
-  const apiPaths = new Set(['/health', '/metrics', '/crisp/webhook', '/calendar/slots', '/calendar/book']);
-  if (host === 'netia.ai' && isBrowserMethod && !apiPaths.has(req.path)) {
-    const target = 'https://www.netia.ai' + req.originalUrl;
+  const isApiPath = ['/health', '/metrics', '/crisp/webhook', '/calendar/', '/chat']
+    .some((p) => req.path === p || req.path.startsWith(p));
+  if (host === 'netia.ai' && isBrowserMethod && !isApiPath) {
+    const target = 'https://www.netia.ai' + (req.originalUrl || '/');
     return res.redirect(301, target);
   }
   next();
@@ -296,6 +297,92 @@ app.post('/crisp/webhook', async (req, res) => {
       entities: intentResult.entities,
       missing_slots: intentResult.missing_slots,
       response 
+    });
+  } catch (err) {
+    console.error('[ERROR]', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Public chat schema & validator (session-based, no HMAC)
+const chatSchema = {
+  type: 'object',
+  properties: {
+    session_id: { type: 'string', minLength: 1 },
+    message: { type: 'string', minLength: 1 },
+  },
+  required: ['session_id', 'message'],
+  additionalProperties: true,
+};
+const validateChat = ajv.compile(chatSchema);
+
+// Public chat endpoint for embedding on the website (e.g., Framer)
+app.post('/chat', async (req, res) => {
+  if (flags.KILL_SWITCH) {
+    return res.status(200).json({ ok: true, skipped: true });
+  }
+
+  const body = req.body || {};
+  if (!validateChat(body)) {
+    return res.status(400).json({ ok: false, error: 'Invalid payload', details: validateChat.errors });
+  }
+
+  try {
+    const conversationId = String(body.session_id);
+    const message = String(body.message);
+
+    if (!conversationHistory.has(conversationId)) {
+      conversationHistory.set(conversationId, []);
+    }
+    const history = conversationHistory.get(conversationId);
+
+    // Add user message
+    history.push({ role: 'user', content: message, timestamp: new Date().toISOString() });
+    await saveMessage(conversationId, 'user', message);
+
+    // Detect intent
+    const intentResult = intentDetector.detectIntent(message);
+    console.log('[INTENT]', JSON.stringify(intentResult));
+
+    // Generate response with metrics
+    const endLlmTimer = llmRequestDuration.startTimer();
+    let response;
+    try {
+      response = await llm.generateResponse(message, history, intentResult, {
+        systemPrompt: getSystemPrompt(),
+        faq: getFaqKb(),
+        demoMode: flags.DEMO_MODE,
+      });
+      llmRequestCounter.inc({ status: 'ok' });
+    } catch (e) {
+      llmRequestCounter.inc({ status: 'error' });
+      throw e;
+    } finally {
+      endLlmTimer();
+    }
+
+    // Add assistant response
+    history.push({ role: 'assistant', content: response, timestamp: new Date().toISOString() });
+    await saveMessage(conversationId, 'assistant', response);
+
+    // Keep history bounded
+    if (history.length > 20) {
+      history.splice(0, history.length - 20);
+    }
+
+    // Optional lead capture on relevant intents
+    if (intentResult.intent === 'booking' || intentResult.intent === 'pricing') {
+      appendLead({ intent: intentResult.intent }, { dryRun: flags.DRY_RUN });
+      await saveLead(intentResult.intent);
+    }
+
+    return res.json({
+      ok: true,
+      intent: intentResult.intent,
+      confidence: intentResult.confidence,
+      entities: intentResult.entities,
+      missing_slots: intentResult.missing_slots,
+      response,
     });
   } catch (err) {
     console.error('[ERROR]', err);
