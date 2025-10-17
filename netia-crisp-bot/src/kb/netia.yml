@@ -1,0 +1,59 @@
+company:
+  mission: "Help small businesses capture and serve more leads with an AI receptionist."
+  audience: "Local and online small businesses that want faster answers for visitors."
+
+pricing:
+  default: "$${NETIA_DEFAULT_PRICE_USD}/mo"
+  tiers:
+    - name: "Starter"
+      price: "$${NETIA_DEFAULT_PRICE_USD}/mo"
+      includes: ["AI chat replies", "Lead capture", "Basic booking"]
+    - name: "Growth"
+      price: "Custom"
+      includes: ["Advanced routing", "Integrations", "Priority support"]
+  trials: "7-day trial available on request."
+
+features:
+  - "AI receptionist that replies 24/7"
+  - "Lead capture with email summaries"
+  - "Appointment booking via link"
+  - "Website chat widget powered by Crisp"
+  - "Automatic follow-ups"
+
+setup:
+  steps:
+    - "Add the Crisp website snippet to your site"
+    - "Add your Netia and OpenAI keys"
+    - "Configure greetings and hours"
+    - "Go live (under 30 minutes)"
+
+support:
+  sla: "Business hours with typical responses under 1 business day."
+  contact: "${NETIA_SALES_EMAIL}"
+
+security:
+  data: "We use Crisp for messaging and store minimal data for support."
+
+faq:
+  - q: "How much does it cost?"
+    a: "Most start at $${NETIA_DEFAULT_PRICE_USD}/mo."
+  - q: "Can I cancel anytime?"
+    a: "Yes, month-to-month billing."
+  - q: "Do you integrate with calendars?"
+    a: "We link to your booking page like ${NETIA_BOOKING_URL}."
+  - q: "Multi-location support?"
+    a: "Yes, we can label and route by location."
+  - q: "Languages?"
+    a: "English first; more on request."
+  - q: "Uptime?"
+    a: "We rely on Crisp’s stable platform and cloud hosting."
+  - q: "Export data?"
+    a: "You can export conversation transcripts from Crisp."
+  - q: "Branding?"
+    a: "Use your logo and style in the chat widget."
+  - q: "Invoices/Receipts?"
+    a: "Available via your billing portal or by email."
+  - q: "Support hours?"
+    a: "Email ${NETIA_SALES_EMAIL}; we aim for under 1 business day."
+
+

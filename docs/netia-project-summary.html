@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Netia Project Summary</title>
+  <style>
+    body { font-family: Segoe UI, system-ui, Arial; margin: 32px; color: #0b1220; }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    h2 { margin: 20px 0 8px; font-size: 16px; }
+    p, li { font-size: 13px; line-height: 1.5; }
+    code { background: #f4f6f8; padding: 1px 4px; border-radius: 4px; }
+    .muted { color: #6b7280; font-size: 12px; }
+    ul { margin: 8px 0 0 18px; }
+  </style>
+</head>
+<body>
+  <h1>Netia AI Chatbot — Project Summary</h1>
+  <p class="muted">Environment: Render · Custom domain: https://api.netia.ai · Website: https://www.netia.ai</p>
+
+  <h2>Architecture</h2>
+  <ul>
+    <li>Node/Express service at <code>Ai-Chatbot-v1/netia-bot-safe</code></li>
+    <li>Endpoints: <code>/health</code>, <code>/metrics</code>, <code>/chat</code> (public), <code>/crisp/webhook</code> (HMAC), <code>/calendar/*</code></li>
+    <li>LLM + intents in <code>src/llm/answer.js</code>, <code>src/intents/detect.js</code>; KB/system prompt cache; PII redaction; rate limiting</li>
+    <li>Prometheus metrics counters/histograms; structured logs</li>
+  </ul>
+
+  <h2>Deployment</h2>
+  <ul>
+    <li>Render service <code>srv-d3ons39r0fns73dnacjg</code> (workspace <code>tea-d3onr1muk2gs73dq2bpg</code>)</li>
+    <li>Custom domain: <code>https://api.netia.ai</code> (green). HSTS + Helmet CSP</li>
+    <li>Env: <code>DRY_RUN=false</code>, <code>CORS_ORIGIN=https://www.netia.ai, https://netia.ai</code></li>
+  </ul>
+
+  <h2>DNS & Hosting</h2>
+  <ul>
+    <li>Porkbun: <code>A @ → 31.43.160.6</code>, <code>A @ → 31.43.161.6</code>, <code>CNAME www → sites.framer.app</code>, <code>CNAME api → ai-chatbot-v1-9les.onrender.com</code></li>
+    <li>Website on Framer (<code>www.netia.ai</code>, apex to Framer). SSL issued.</li>
+  </ul>
+
+  <h2>Chat Integration</h2>
+  <ul>
+    <li>Custom Netia widget (styled) calling <code>POST https://api.netia.ai/chat</code> embedded in Framer</li>
+    <li>Optional Crisp widget supported; webhook at <code>/crisp/webhook</code> with HMAC verification</li>
+  </ul>
+
+  <h2>Security & Ops</h2>
+  <ul>
+    <li>Helmet CSP, HSTS, body size limits, KILL_SWITCH, rate limiter</li>
+    <li>Metrics at <code>/metrics</code>; health at <code>/health</code></li>
+  </ul>
+
+  <h2>Pricing & Copy</h2>
+  <ul>
+    <li>$89/mo; $89 setup fee (waived with signed agreement)</li>
+    <li>Conversion-focused Framer prompt and full landing component provided</li>
+  </ul>
+
+  <h2>Status</h2>
+  <ul>
+    <li>API healthy; <code>/chat</code> tested OK; CORS set; domains correct; deploys green; site live on Framer</li>
+  </ul>
+</body>
+</html>
+
+
