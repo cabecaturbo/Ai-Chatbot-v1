@@ -1,45 +1,74 @@
-# Netia AI Chatbot - Multi-Tenant SaaS Platform
+# Netia AI Chatbot 🤖
 
-A production-ready, multi-tenant SaaS platform that provides AI-powered chatbots for businesses. Features Crisp integration, calendar booking, lead capture, and a comprehensive admin dashboard.
+**A smart robot that talks to customers on websites!**
 
-## 🏗️ Architecture Overview
+Think of this like having a super smart helper that can:
+- 💬 Talk to people who visit your website
+- 📅 Help them book appointments
+- 💰 Answer questions about prices
+- 📝 Remember what they talked about
+- 🎯 Figure out what they really want
 
-### System Architecture
+## 🏠 What's Inside This Box?
+
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Customer      │    │   Admin         │    │   Chat          │
-│   Websites      │    │   Dashboard     │    │   Participants  │
-│   (Crisp)       │    │   (Web App)     │    │   (End Users)   │
+│   Your Website  │    │   Your Control  │    │   Your Customers│
+│   (Where people │    │   Panel         │    │   (The people   │
+│   see the chat) │    │   (Where you    │    │   who ask       │
+│                 │    │   manage stuff) │    │   questions)    │
 └─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
           │                      │                      │
           │                      │                      │
           └──────────────────────┼──────────────────────┘
                                  │
                     ┌─────────────▼─────────────┐
-                    │      Backend API          │
-                    │   (Node.js/Express)       │
-                    │  - Multi-tenant support   │
-                    │  - API key auth           │
-                    │  - Intent detection       │
-                    │  - AI response generation │
+                    │    The Smart Brain        │
+                    │   (This is where the      │
+                    │    magic happens!)        │
+                    │  - Understands what       │
+                    │    people are asking      │
+                    │  - Gives smart answers    │
+                    │  - Remembers everything   │
                     └─────────────┬─────────────┘
                                   │
                     ┌─────────────▼─────────────┐
-                    │    Neon Database          │
-                    │   (PostgreSQL)            │
-                    │  - Tenant data isolation  │
-                    │  - Conversation history   │
-                    │  - User management        │
+                    │    The Memory Bank        │
+                    │   (Stores all the         │
+                    │    conversations and      │
+                    │    information)           │
                     └───────────────────────────┘
 ```
 
-### Key Components
-- **Backend API**: Multi-tenant Node.js service with API key authentication
-- **Web Dashboard**: Next.js admin panel for tenant and subscription management
-- **Database**: Neon (serverless PostgreSQL) with tenant data isolation
-- **AI Integration**: OpenAI GPT with intent detection and response generation
-- **Chat Integration**: Crisp webhook integration for real-time chat
-- **Billing**: Stripe integration for subscription management
+### The Main Parts:
+- **🤖 The Smart Robot**: Talks to your customers and gives them answers
+- **🎛️ Your Control Panel**: Where you can see what's happening and change settings
+- **💾 The Memory Bank**: Remembers all the conversations and information
+- **🌐 Your Website**: Where customers see and use the chat
+
+## 🔄 How It Works (Super Simple!)
+
+```mermaid
+graph TD
+    A[👤 Customer visits your website] --> B[💬 Customer types a message]
+    B --> C[🤖 Smart Robot reads the message]
+    C --> D{🧠 What does the customer want?}
+    D -->|Wants to book| E[📅 Help them book an appointment]
+    D -->|Asks about price| F[💰 Tell them the price]
+    D -->|Has a question| G[❓ Answer their question]
+    E --> H[📝 Remember this conversation]
+    F --> H
+    G --> H
+    H --> I[✅ Customer is happy!]
+```
+
+**In simple words:**
+1. Someone visits your website
+2. They type a message in the chat
+3. Our smart robot reads it and figures out what they want
+4. The robot gives them a helpful answer
+5. Everything gets saved so we remember next time
+6. The customer is happy! 🎉
 
 ## 📁 Monorepo Structure
 
