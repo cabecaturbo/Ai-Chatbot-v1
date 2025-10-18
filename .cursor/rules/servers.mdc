@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+do not run development servers, always ask the user to do it

@@ -1,0 +1,30 @@
+---
+alwaysApply: true
+---
+
+# TypeScript Development Rules
+
+## Type Safety
+- Always use strict TypeScript settings
+- Define interfaces for all API requests/responses
+- Use proper typing for database queries and results
+- Avoid `any` type - use specific types or `unknown`
+- Use type guards for runtime type checking
+
+## Code Organization
+- Keep type definitions in separate `.types.ts` files when they're shared
+- Use interfaces for object shapes, types for unions/primitives
+- Export types from index files for easy importing
+- Use generic types for reusable components
+
+## Multi-Tenant Considerations
+- Always include `tenant_id` in database operations
+- Use tenant context in all API endpoints
+- Validate tenant access before data operations
+- Use typed tenant configuration objects
+
+## Error Handling
+- Use typed error classes instead of generic Error
+- Define error response interfaces
+- Use Result/Either patterns for operations that can fail
+- Always handle async operations with proper error types

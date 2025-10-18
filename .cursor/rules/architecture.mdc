@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+
+# Multi-Tenant SaaS Architecture Rules
+
+## Data Isolation
+- NEVER query data without tenant context
+- Always include `tenant_id` in WHERE clauses
+- Use database row-level security when possible
+- Validate tenant ownership before any data access
+
+## API Design
+- Use API keys for tenant identification
+- Include tenant context in all middleware
+- Implement proper rate limiting per tenant
+- Use consistent error response formats
+
+## Security
+- Always validate and sanitize user input
+- Use parameterized queries to prevent SQL injection
+- Implement proper CORS policies
+- Log security events and suspicious activity
+
+## Performance
+- Use Redis for caching tenant-specific data
+- Implement connection pooling for database
+- Use indexes on tenant_id columns
+- Monitor performance per tenant
+
+## Code Structure
+- Keep tenant logic separate from business logic
+- Use dependency injection for tenant context
+- Implement proper logging with tenant identification
+- Use environment-based configuration

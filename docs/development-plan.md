@@ -23,116 +23,155 @@ This document outlines the development roadmap for transforming the current sing
 
 ## Development Phases
 
-### Phase 1: Multi-Tenant Backend (Weeks 1-4)
+### Phase 1: Foundation & TypeScript Migration (Weeks 1-2)
+**Goal**: Modernize codebase and prepare for multi-tenant architecture
+
+#### 1.1 TypeScript Migration
+- [ ] **Setup TypeScript Configuration**
+  - [ ] Create `tsconfig.json` with strict settings
+  - [ ] Install TypeScript dependencies (`typescript`, `@types/*`)
+  - [ ] Update build scripts for TypeScript compilation
+  - [ ] Configure ESLint for TypeScript
+
+- [ ] **Core Files Migration**
+  - [ ] Migrate `server.js` → `server.ts` with Express types
+  - [ ] Migrate `llm/answer.js` → `llm/answer.ts` with OpenAI types
+  - [ ] Migrate `intents/detect.js` → `intents/detect.ts` with intent types
+  - [ ] Migrate `tools/db.js` → `tools/db.ts` with PostgreSQL types
+  - [ ] Migrate remaining tool files with proper typing
+
+- [ ] **Type Definitions**
+  - [ ] Create interfaces for `CrispPayload`, `IntentResult`, `Message`
+  - [ ] Add types for environment variables and configuration
+  - [ ] Create database schema types and query result interfaces
+  - [ ] Add API response/request type definitions
+
+- [ ] **Testing & Validation**
+  - [ ] Ensure all existing functionality works with TypeScript
+  - [ ] Fix any type errors and runtime issues
+  - [ ] Update tests to work with TypeScript
+  - [ ] Validate deployment pipeline with TypeScript build
+
+### Phase 2: Multi-Tenant Backend (Weeks 3-6)
 **Goal**: Transform backend to support multiple tenants
 
-#### 1.1 Database Schema Updates
+#### 2.1 Database Schema Updates
 - [ ] Add `tenants` table for customer accounts
 - [ ] Add `tenant_id` to all existing tables (conversations, messages, leads)
 - [ ] Create `tenant_configurations` table for custom settings
 - [ ] Add `api_keys` table for authentication
-- [ ] Implement database migrations
+- [ ] Implement database migrations with TypeScript
 
-#### 1.2 API Key Authentication
+#### 2.2 API Key Authentication
 - [ ] Create API key generation and validation system
 - [ ] Add middleware to extract tenant from API key
 - [ ] Update all endpoints to use tenant context
 - [ ] Implement tenant-specific data filtering
 
-#### 1.3 Tenant Data Isolation
+#### 2.3 Tenant Data Isolation
 - [ ] Modify conversation storage to be tenant-specific
 - [ ] Update lead capture to include tenant context
 - [ ] Implement tenant-specific knowledge base storage
 - [ ] Add tenant-specific system prompts and configurations
 
-#### 1.4 Backend API Updates
+#### 2.4 Backend API Updates
 - [ ] Update `/crisp/webhook` to accept API key in headers
 - [ ] Update `/chat` endpoint for tenant-specific responses
 - [ ] Add tenant management endpoints (CRUD operations)
 - [ ] Implement tenant-specific rate limiting
 
-### Phase 2: Web Dashboard (Weeks 5-8)
+### Phase 3: Web Dashboard (Weeks 7-10)
 **Goal**: Build internal dashboard for admin and customer management
 
-#### 2.1 Authentication System
+#### 3.1 Authentication System
 - [ ] Implement JWT-based authentication
 - [ ] Create admin and customer user types
 - [ ] Add role-based access control
 - [ ] Implement session management
 
-#### 2.2 Admin Dashboard
+#### 3.2 Admin Dashboard
 - [ ] Tenant creation and onboarding flow
 - [ ] Subscription management interface
 - [ ] Customer support tools
 - [ ] System analytics and reporting
 
-#### 2.3 Customer Portal
+#### 3.3 Customer Portal
 - [ ] Business information setup
 - [ ] Chatbot configuration interface
 - [ ] Conversation history and analytics
 - [ ] Account management
 
-#### 2.4 Billing Integration
+#### 3.4 Billing Integration
 - [ ] Integrate Stripe for payment processing
 - [ ] Implement subscription plans and pricing
 - [ ] Add usage tracking and billing
 - [ ] Create invoice and payment management
 
-### Phase 3: Advanced Features (Weeks 9-12)
+### Phase 4: Advanced Features (Weeks 11-14)
 **Goal**: Add advanced SaaS features and optimizations
 
-#### 3.1 Advanced Analytics
+#### 4.1 Advanced Analytics
 - [ ] Tenant-specific conversation analytics
 - [ ] Lead conversion tracking
 - [ ] Performance metrics and insights
 - [ ] Custom reporting and exports
 
-#### 3.2 Integration Enhancements
+#### 4.2 Integration Enhancements
 - [ ] Multiple chat platform support
 - [ ] CRM integrations (HubSpot, Salesforce)
 - [ ] Calendar integrations (Calendly, Google Calendar)
 - [ ] Email marketing integrations
 
-#### 3.3 Advanced Customization
+#### 4.3 Advanced Customization
 - [ ] Custom AI model fine-tuning per tenant
 - [ ] Advanced intent detection training
 - [ ] Multi-language support
 - [ ] White-label branding options
 
-#### 3.4 Enterprise Features
+#### 4.4 Enterprise Features
 - [ ] Team collaboration tools
 - [ ] Advanced user permissions
 - [ ] SSO integration
 - [ ] API access for enterprise customers
 
-### Phase 4: Production Optimization (Weeks 13-16)
+### Phase 5: Production Optimization (Weeks 15-18)
 **Goal**: Optimize for production scale and reliability
 
-#### 4.1 Performance Optimization
+#### 5.1 Performance Optimization
 - [ ] Implement Redis caching for frequently accessed data
 - [ ] Add response caching for common queries
 - [ ] Optimize database queries and add connection pooling
 - [ ] Implement lazy loading for knowledge base content
 
-#### 4.2 Scalability Enhancements
+#### 5.2 Scalability Enhancements
 - [ ] Add horizontal scaling capabilities
 - [ ] Implement load balancing and auto-scaling
 - [ ] Add database read replicas for improved performance
 - [ ] Implement distributed rate limiting
 
-#### 4.3 Monitoring & Observability
+#### 5.3 Monitoring & Observability
 - [ ] Enhance Prometheus metrics with business KPIs
 - [ ] Add distributed tracing for request flow analysis
 - [ ] Implement alerting for system health and performance
 - [ ] Create comprehensive dashboards for operations
 
-#### 4.4 Security Hardening
+#### 5.4 Security Hardening
 - [ ] Implement advanced threat detection and prevention
 - [ ] Add data encryption at rest and in transit
 - [ ] Implement audit logging and compliance features
 - [ ] Add advanced access control and authentication
 
 ## Technical Implementation
+
+### TypeScript Migration Benefits
+The TypeScript migration in Phase 1 provides several key advantages for the multi-tenant SaaS development:
+
+- **Type Safety**: Catch errors at compile time, reducing runtime bugs
+- **Better IDE Support**: Enhanced autocomplete, refactoring, and navigation
+- **Self-Documenting Code**: Types serve as living documentation
+- **Easier Refactoring**: Safe code changes with confidence
+- **Team Collaboration**: Clear interfaces and contracts between modules
+- **Future-Proofing**: Better foundation for complex multi-tenant features
 
 ### Database Schema
 ```sql
@@ -166,6 +205,14 @@ Headers: Authorization: Bearer admin-token
 GET /api/v1/customer/config
 Headers: Authorization: Bearer customer-token
 ```
+
+### Backend Architecture (Post-TypeScript Migration)
+- **Node.js** with **TypeScript** for type safety
+- **Express.js** with typed middleware and routes
+- **PostgreSQL** with typed database queries
+- **Redis** for caching and rate limiting
+- **OpenAI API** with typed response interfaces
+- **Prometheus** metrics with typed collectors
 
 ### Frontend Architecture
 - **Next.js 14** with TypeScript

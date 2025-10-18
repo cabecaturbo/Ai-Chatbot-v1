@@ -1,0 +1,36 @@
+---
+alwaysApply: true
+---
+
+# Development Workflow Rules
+
+## Git & Branching
+- Use feature branches for all development
+- Follow conventional commit messages
+- Update documentation with code changes
+- Test changes before committing
+
+## Code Quality
+- Run linting and formatting before commits
+- Write tests for new functionality
+- Use meaningful variable and function names
+- Add JSDoc comments for complex functions
+
+## Database Changes
+- Update the single `docs/database.md` file as the source of truth for schema
+- Document all schema changes in the database.md file with clear descriptions
+- Test schema changes on development database first
+- Update type definitions when schema changes
+- Use the database.md file to understand current schema state
+
+## Environment Management
+- Never commit sensitive data to git
+- Use environment variables for configuration
+- Document all required environment variables
+- Use different configs for dev/staging/production
+
+## Testing
+- Write unit tests for business logic
+- Write integration tests for API endpoints
+- Test tenant isolation thoroughly
+- Use test databases for all tests
