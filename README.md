@@ -1,74 +1,76 @@
 # Netia AI Chatbot 🤖
 
-**A smart robot that talks to customers on websites!**
+**An intelligent chatbot platform that helps businesses communicate with their customers automatically.**
 
-Think of this like having a super smart helper that can:
-- 💬 Talk to people who visit your website
-- 📅 Help them book appointments
-- 💰 Answer questions about prices
-- 📝 Remember what they talked about
-- 🎯 Figure out what they really want
+This system provides AI-powered customer service that can:
+- 💬 **Chat with website visitors** in real-time
+- 📅 **Schedule appointments** and manage bookings
+- 💰 **Answer pricing questions** and provide quotes
+- 📝 **Remember conversations** and customer preferences
+- 🎯 **Understand customer intent** and provide relevant responses
+- 📊 **Track leads** and customer interactions
 
-## 🏠 What's Inside This Box?
+## 🏗️ System Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Your Website  │    │   Your Control  │    │   Your Customers│
-│   (Where people │    │   Panel         │    │   (The people   │
-│   see the chat) │    │   (Where you    │    │   who ask       │
-│                 │    │   manage stuff) │    │   questions)    │
+│   Customer      │    │   Admin         │    │   Website       │
+│   Websites      │    │   Dashboard     │    │   Visitors      │
+│   (Crisp Chat)  │    │   (Management)  │    │   (End Users)   │
 └─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
           │                      │                      │
           │                      │                      │
           └──────────────────────┼──────────────────────┘
                                  │
                     ┌─────────────▼─────────────┐
-                    │    The Smart Brain        │
-                    │   (This is where the      │
-                    │    magic happens!)        │
-                    │  - Understands what       │
-                    │    people are asking      │
-                    │  - Gives smart answers    │
-                    │  - Remembers everything   │
+                    │      Backend API          │
+                    │   (Node.js/Express)       │
+                    │  - Multi-tenant support   │
+                    │  - API key authentication │
+                    │  - Intent detection       │
+                    │  - AI response generation │
                     └─────────────┬─────────────┘
                                   │
                     ┌─────────────▼─────────────┐
-                    │    The Memory Bank        │
-                    │   (Stores all the         │
-                    │    conversations and      │
-                    │    information)           │
+                    │    Neon Database          │
+                    │   (PostgreSQL)            │
+                    │  - Tenant data isolation  │
+                    │  - Conversation history   │
+                    │  - User management        │
                     └───────────────────────────┘
 ```
 
-### The Main Parts:
-- **🤖 The Smart Robot**: Talks to your customers and gives them answers
-- **🎛️ Your Control Panel**: Where you can see what's happening and change settings
-- **💾 The Memory Bank**: Remembers all the conversations and information
-- **🌐 Your Website**: Where customers see and use the chat
+### Key Components:
+- **🤖 Backend API**: The brain that processes messages and generates responses
+- **🎛️ Admin Dashboard**: Web interface for managing customers and settings
+- **💾 Database**: Stores all conversations, user data, and system information
+- **🌐 Chat Integration**: Connects to customer websites via Crisp chat widget
 
-## 🔄 How It Works (Super Simple!)
+## 🔄 How It Works
 
 ```mermaid
 graph TD
-    A[👤 Customer visits your website] --> B[💬 Customer types a message]
-    B --> C[🤖 Smart Robot reads the message]
-    C --> D{🧠 What does the customer want?}
-    D -->|Wants to book| E[📅 Help them book an appointment]
-    D -->|Asks about price| F[💰 Tell them the price]
-    D -->|Has a question| G[❓ Answer their question]
-    E --> H[📝 Remember this conversation]
+    A[👤 Customer visits website] --> B[💬 Types message in chat]
+    B --> C[🤖 AI analyzes the message]
+    C --> D{🧠 Intent Detection}
+    D -->|Booking Request| E[📅 Process appointment booking]
+    D -->|Pricing Inquiry| F[💰 Provide pricing information]
+    D -->|General Question| G[❓ Generate contextual response]
+    E --> H[📝 Save conversation & lead data]
     F --> H
     G --> H
-    H --> I[✅ Customer is happy!]
+    H --> I[📊 Update analytics & metrics]
+    I --> J[✅ Response sent to customer]
 ```
 
-**In simple words:**
-1. Someone visits your website
-2. They type a message in the chat
-3. Our smart robot reads it and figures out what they want
-4. The robot gives them a helpful answer
-5. Everything gets saved so we remember next time
-6. The customer is happy! 🎉
+**The Process:**
+1. **Customer Interaction**: A visitor types a message on your website's chat widget
+2. **Message Processing**: Our AI system receives and analyzes the message
+3. **Intent Recognition**: The system determines what the customer is trying to accomplish
+4. **Response Generation**: Based on the intent, an appropriate response is generated
+5. **Data Storage**: The conversation and any relevant data (like leads) are saved
+6. **Analytics Update**: System metrics and customer data are updated
+7. **Response Delivery**: The AI response is sent back to the customer through the chat widget
 
 ## 📁 Monorepo Structure
 
