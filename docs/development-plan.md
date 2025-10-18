@@ -17,6 +17,7 @@ This document outlines the development roadmap for transforming the current sing
 ### 🎯 Target Architecture
 - **Multi-Tenant Backend**: Single API serving multiple customers
 - **API Key Authentication**: Tenant identification via API keys
+- **Single Crisp Account**: One Crisp account managing multiple tenant websites
 - **Internal Dashboard**: Web app for admin and customer management
 - **Billing Integration**: Stripe for subscription management
 - **Tenant Isolation**: Complete data separation between customers
@@ -27,67 +28,71 @@ This document outlines the development roadmap for transforming the current sing
 **Goal**: Modernize codebase and prepare for multi-tenant architecture
 
 #### 1.1 TypeScript Migration
-- [ ] **Setup TypeScript Configuration**
-  - [ ] Create `tsconfig.json` with strict settings
-  - [ ] Install TypeScript dependencies (`typescript`, `@types/*`)
-  - [ ] Update build scripts for TypeScript compilation
-  - [ ] Configure ESLint for TypeScript
+- [x] **Setup TypeScript Configuration**
+  - [x] Create `tsconfig.json` with strict settings
+  - [x] Install TypeScript dependencies (`typescript`, `@types/*`)
+  - [x] Update build scripts for TypeScript compilation
+  - [x] Configure ESLint for TypeScript
 
-- [ ] **Core Files Migration**
-  - [ ] Migrate `server.js` → `server.ts` with Express types
-  - [ ] Migrate `llm/answer.js` → `llm/answer.ts` with OpenAI types
-  - [ ] Migrate `intents/detect.js` → `intents/detect.ts` with intent types
-  - [ ] Migrate `tools/db.js` → `tools/db.ts` with PostgreSQL types
-  - [ ] Migrate remaining tool files with proper typing
+- [x] **Core Files Migration**
+  - [x] Migrate `server.js` → `server.ts` with Express types
+  - [x] Migrate `llm/answer.js` → `llm/answer.ts` with OpenAI types
+  - [x] Migrate `intents/detect.js` → `intents/detect.ts` with intent types
+  - [x] Migrate `tools/db.js` → `tools/db.ts` with PostgreSQL types
+  - [x] Migrate `tools/demo_templates.js` → `tools/demo_templates.ts`
+  - [x] Migrate remaining tool files with proper typing
+  - [x] Migrate `flows/calendar.js` → `flows/calendar.ts`
 
-- [ ] **Type Definitions**
-  - [ ] Create interfaces for `CrispPayload`, `IntentResult`, `Message`
-  - [ ] Add types for environment variables and configuration
-  - [ ] Create database schema types and query result interfaces
-  - [ ] Add API response/request type definitions
+- [x] **Type Definitions**
+  - [x] Create interfaces for `CrispPayload`, `IntentResult`, `Message`
+  - [x] Add types for environment variables and configuration
+  - [x] Create database schema types and query result interfaces
+  - [x] Add API response/request type definitions
+  - [x] Add Crisp integration types for single account multi-tenant
 
-- [ ] **Testing & Validation**
-  - [ ] Ensure all existing functionality works with TypeScript
-  - [ ] Fix any type errors and runtime issues
-  - [ ] Update tests to work with TypeScript
-  - [ ] Validate deployment pipeline with TypeScript build
+- [x] **Testing & Validation**
+  - [x] Ensure all existing functionality works with TypeScript
+  - [x] Fix any type errors and runtime issues
+  - [x] Update tests to work with TypeScript
+  - [x] Validate deployment pipeline with TypeScript build
 
 ### Phase 2: Multi-Tenant Backend (Weeks 3-6)
 **Goal**: Transform backend to support multiple tenants
 
 #### 2.1 Database Schema Updates
-- [ ] Add `tenants` table for customer accounts
-- [ ] Add `tenant_id` to all existing tables (conversations, messages, leads)
-- [ ] Create `tenant_configurations` table for custom settings
-- [ ] Add `api_keys` table for authentication
-- [ ] Implement database migrations with TypeScript
+- [x] Add `tenants` table for customer accounts (with `crisp_website_id`)
+- [x] Add `tenant_id` to all existing tables (conversations, messages, leads)
+- [x] Create `tenant_configurations` table for custom settings
+- [x] Add `api_keys` table for authentication
+- [x] Implement database migrations with TypeScript
 
 #### 2.2 API Key Authentication
-- [ ] Create API key generation and validation system
-- [ ] Add middleware to extract tenant from API key
-- [ ] Update all endpoints to use tenant context
-- [ ] Implement tenant-specific data filtering
+- [x] Create API key generation and validation system
+- [x] Add middleware to extract tenant from API key
+- [x] Update all endpoints to use tenant context
+- [x] Implement tenant-specific data filtering
 
 #### 2.3 Tenant Data Isolation
-- [ ] Modify conversation storage to be tenant-specific
-- [ ] Update lead capture to include tenant context
-- [ ] Implement tenant-specific knowledge base storage
-- [ ] Add tenant-specific system prompts and configurations
+- [x] Modify conversation storage to be tenant-specific
+- [x] Update lead capture to include tenant context
+- [x] Implement tenant-specific knowledge base storage
+- [x] Add tenant-specific system prompts and configurations
 
 #### 2.4 Backend API Updates
-- [ ] Update `/crisp/webhook` to accept API key in headers
-- [ ] Update `/chat` endpoint for tenant-specific responses
-- [ ] Add tenant management endpoints (CRUD operations)
-- [ ] Implement tenant-specific rate limiting
+- [x] Update `/crisp/webhook` to use website_id for tenant identification
+- [x] Update `/chat` endpoint for tenant-specific responses
+- [x] Add tenant management endpoints (CRUD operations)
+- [x] Implement tenant-specific rate limiting
+- [x] Fix webhook to use Crisp website_id instead of hardcoded API keys
 
 ### Phase 3: Web Dashboard (Weeks 7-10)
 **Goal**: Build internal dashboard for admin and customer management
 
 #### 3.1 Authentication System
-- [ ] Implement JWT-based authentication
+- [ ] Implement Neon Auth (passwordless magic link authentication)
 - [ ] Create admin and customer user types
 - [ ] Add role-based access control
-- [ ] Implement session management
+- [ ] Configure Stack Auth integration
 
 #### 3.2 Admin Dashboard
 - [ ] Tenant creation and onboarding flow
@@ -176,7 +181,7 @@ The TypeScript migration in Phase 1 provides several key advantages for the mult
 ### Database Schema
 ```sql
 -- Core tenant management
-tenants (id, name, email, subscription_status, created_at)
+tenants (id, name, email, subscription_status, crisp_website_id, created_at)
 api_keys (id, tenant_id, key_hash, name, permissions, created_at)
 
 -- Tenant-specific data
@@ -195,9 +200,9 @@ POST /api/v1/chat
 Headers: X-API-Key: tenant-api-key
 Body: { session_id, message }
 
-POST /api/v1/crisp/webhook
-Headers: X-API-Key: tenant-api-key
-Body: { conversation_id, message }
+POST /crisp/webhook
+Headers: X-Crisp-Signature: webhook-signature
+Body: { website_id, event, data: { content, from, session_id } }
 
 GET /api/v1/admin/tenants
 Headers: Authorization: Bearer admin-token
@@ -218,7 +223,8 @@ Headers: Authorization: Bearer customer-token
 - **Next.js 14** with TypeScript
 - **Tailwind CSS** for styling
 - **React Hook Form** with Zod validation
-- **JWT authentication** with role-based access
+- **Neon Auth** with passwordless magic link authentication
+- **Stack Auth** for authentication provider
 - **Axios** for API communication
 
 ## Success Metrics

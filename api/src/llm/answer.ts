@@ -1,29 +1,46 @@
+import { IntentResult, Message, LLMContext } from '@/types/ai';
+import { DEMO_TEMPLATES } from '@/tools/demo_templates';
+
 const DEFAULT_PRICING = 'Our plans start at $29/mo. Need more details?';
 const DEFAULT_BOOKING = 'I can help book an appointment. What date and time works for you?';
 const DEFAULT_FAQ = 'You can find hours and location on our website. What else can I help with?';
-const { PRICING: DEMO_PRICING, BOOKING: DEMO_BOOKING, FAQ: DEMO_FAQ } = require('../tools/demo_templates');
 const DEFAULT_FALLBACK = 'Happy to help! Could you share a bit more about your request?';
 
-class NetiaLLM {
-  constructor(isDryRun) {
+interface OpenAIClient {
+  generate(params: {
+    messages: Array<{ role: string; content: string }>;
+  }): Promise<string>;
+}
+
+export class NetiaLLM {
+  private isDryRun: boolean;
+  private live: OpenAIClient;
+
+  constructor(isDryRun: boolean) {
     this.isDryRun = Boolean(isDryRun);
     this.live = require('./openai_client');
   }
 
-  async generateResponse(message, history, intentResult, context) {
+  async generateResponse(
+    message: string, 
+    history: Message[], 
+    intentResult: IntentResult, 
+    context?: LLMContext
+  ): Promise<string> {
     // In DRY_RUN, return deterministic template-based answers.
     if (this.isDryRun) {
-      if (context && context.systemPrompt && context.faq && history && history.length === 1) {
+      if (context?.systemPrompt && context?.faq && history && history.length === 1) {
         // Demo-friendly intro on first turn
         return 'Hi! I can help with pricing, booking, and FAQs.';
       }
+      
       switch (intentResult.intent) {
         case 'pricing':
-          return (context && context.demoMode) ? DEMO_PRICING : DEFAULT_PRICING;
+          return (context?.demoMode) ? DEMO_TEMPLATES.PRICING : DEFAULT_PRICING;
         case 'booking':
-          return (context && context.demoMode) ? DEMO_BOOKING : DEFAULT_BOOKING;
+          return (context?.demoMode) ? DEMO_TEMPLATES.BOOKING : DEFAULT_BOOKING;
         case 'faq':
-          return (context && context.demoMode) ? DEMO_FAQ : DEFAULT_FAQ;
+          return (context?.demoMode) ? DEMO_TEMPLATES.FAQ : DEFAULT_FAQ;
         default:
           return DEFAULT_FALLBACK;
       }
@@ -33,18 +50,15 @@ class NetiaLLM {
     try {
       const content = await this.live.generate({
         messages: [
-          { role: 'system', content: (context && context.systemPrompt) || '' },
+          { role: 'system', content: context?.systemPrompt || '' },
           ...history,
           { role: 'user', content: message },
         ],
       });
       return content || DEFAULT_FALLBACK;
-    } catch (_e) {
+    } catch (error) {
+      console.error('LLM generation error:', error);
       return DEFAULT_FALLBACK;
     }
   }
 }
-
-module.exports = { NetiaLLM };
-
-

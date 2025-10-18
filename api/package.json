@@ -3,16 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "nodemon src/server.js",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "check:health": "node tests/check.mjs health",
     "check:webhook": "node tests/check.mjs webhook",
     "test:conversations": "node tests/run.mjs",
     "test:conversations:live": "node tests/run.mjs --live",
     "test:load": "node tests/load.mjs",
-    "lint": "eslint \"src/**/*.js\"",
+    "lint": "eslint \"src/**/*.{js,ts}\"",
+    "lint:fix": "eslint \"src/**/*.{js,ts}\" --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "husky"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "express": "^4.19.2",
@@ -33,20 +36,38 @@
   "devDependencies": {
     "nodemon": "^3.0.2",
     "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.5",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/pg": "^8.10.9",
     "@types/js-yaml": "^4.0.9",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.13.0",
     "@eslint/js": "^9.13.0",
     "eslint-config-prettier": "^9.1.0",
-    "prettier": "^3.3.3",
-    "husky": "^9.1.6"
+    "prettier": "^3.3.3"
   },
   "eslintConfig": {
     "root": true,
-    "languageOptions": { "sourceType": "commonjs", "ecmaVersion": 2021 },
-    "plugins": [],
-    "extends": ["eslint:recommended", "prettier"],
+    "parser": "@typescript-eslint/parser",
+    "plugins": ["@typescript-eslint"],
+    "extends": [
+      "eslint:recommended",
+      "@typescript-eslint/recommended",
+      "prettier"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2021,
+      "sourceType": "commonjs",
+      "project": "./tsconfig.json"
+    },
     "rules": {
-      "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/explicit-function-return-type": "off",
+      "@typescript-eslint/explicit-module-boundary-types": "off",
       "no-console": "off"
     }
   },

@@ -10,7 +10,7 @@ Netia AI Chatbot is a **multi-tenant SaaS platform** that provides AI-powered cu
 
 **1. Sign Up & Setup**
 - Business owner signs up for a Netia account
-- Receives an API key and integration instructions
+- Receives a unique Crisp website ID for their business
 - Adds a Crisp chat widget to their website
 - Configures their business information (pricing, hours, services, FAQ)
 
@@ -155,7 +155,7 @@ Netia AI Chatbot is a **multi-tenant SaaS platform** that provides AI-powered cu
 ### Multi-Tenant Platform
 - **Single Backend**: One API serves multiple businesses
 - **Tenant Isolation**: Each business's data is completely separate
-- **API Key Authentication**: Secure identification of which business is making requests
+- **Website ID Identification**: Each business has a unique Crisp website ID for automatic tenant identification
 - **Scalable**: Can serve hundreds of businesses from one platform
 
 ### AI-Powered Responses

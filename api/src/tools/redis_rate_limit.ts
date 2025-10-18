@@ -1,9 +1,9 @@
-const rateLimit = require('express-rate-limit');
-const { RedisStore } = require('rate-limit-redis');
-const IORedis = require('ioredis');
+import rateLimit from 'express-rate-limit';
+import { RedisStore } from 'rate-limit-redis';
+import IORedis from 'ioredis';
 
 function buildRateLimiter() {
-  const redisUrl = process.env.REDIS_URL;
+  const redisUrl = process.env['REDIS_URL'];
   if (!redisUrl) {
     return rateLimit({
       windowMs: 60 * 1000,
@@ -20,11 +20,9 @@ function buildRateLimiter() {
     standardHeaders: true,
     legacyHeaders: false,
     store: new RedisStore({
-      sendCommand: (...args) => client.call(...args),
+      sendCommand: (command: string, ...args: string[]) => client.call(command, ...args) as any,
     }),
   });
 }
 
-module.exports = { buildRateLimiter };
-
-
+export { buildRateLimiter };

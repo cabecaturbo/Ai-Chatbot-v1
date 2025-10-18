@@ -39,7 +39,7 @@ graph TB
     end
     
     %% External connections
-    Crisp -->|Webhook| MainBot
+    Crisp -->|Webhook with website_id| MainBot
     Website -->|Chat API| MainBot
     OpenAI -->|API Calls| NetiaLLM
     
@@ -132,8 +132,9 @@ sequenceDiagram
     participant Redis as Redis Cache
     
     User->>Crisp: Sends message
-    Crisp->>API: Webhook POST /crisp/webhook
+    Crisp->>API: Webhook POST /crisp/webhook (with website_id)
     API->>API: Validate HMAC signature
+    API->>API: Identify tenant by website_id
     API->>API: Check KILL_SWITCH flag
     
     alt KILL_SWITCH enabled

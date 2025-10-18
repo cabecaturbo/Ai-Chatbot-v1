@@ -1,6 +1,17 @@
-function generateSlots(days = 3) {
-  const slots = [];
+interface TimeSlot {
+  iso: string;
+}
+
+interface Event {
+  eventId: string;
+  when: string;
+  customer?: string | undefined;
+}
+
+function generateSlots(days: number = 3): TimeSlot[] {
+  const slots: TimeSlot[] = [];
   const now = new Date();
+  
   for (let d = 0; d < days; d++) {
     for (const hour of [10, 11, 14, 15, 16]) {
       const dt = new Date(now);
@@ -9,14 +20,13 @@ function generateSlots(days = 3) {
       slots.push({ iso: dt.toISOString() });
     }
   }
+  
   return slots;
 }
 
-function createEvent(slotIso, customer) {
+function createEvent(slotIso: string, customer?: string): Event {
   const eventId = `evt_${Math.random().toString(36).slice(2, 10)}`;
   return { eventId, when: slotIso, customer };
 }
 
-module.exports = { generateSlots, createEvent };
-
-
+export { generateSlots, createEvent };

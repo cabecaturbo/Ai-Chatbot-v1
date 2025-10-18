@@ -16,6 +16,8 @@ CREATE TABLE tenants (
     email VARCHAR(255) UNIQUE NOT NULL,
     subscription_status VARCHAR(50) DEFAULT 'trial',
     subscription_plan VARCHAR(50) DEFAULT 'basic',
+    crisp_website_id VARCHAR(255) UNIQUE,
+    tidio_website_id VARCHAR(255) UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_active BOOLEAN DEFAULT true
@@ -23,6 +25,8 @@ CREATE TABLE tenants (
 
 CREATE INDEX idx_tenants_email ON tenants(email);
 CREATE INDEX idx_tenants_status ON tenants(subscription_status);
+CREATE INDEX idx_tenants_crisp_website_id ON tenants(crisp_website_id);
+CREATE INDEX idx_tenants_tidio_website_id ON tenants(tidio_website_id);
 ```
 
 #### `api_keys`
@@ -146,6 +150,20 @@ CREATE INDEX idx_kb_active ON knowledge_bases(is_active);
 
 ## Schema Evolution History
 
+### Version 1.2 (Tidio Integration Support)
+- Added `tidio_website_id` to `tenants` table for Tidio chat widget support
+- Added index on `tidio_website_id` for efficient lookups
+- **Dual Chat Platform Support**: System now supports both Crisp and Tidio chat widgets
+- **Tidio Webhook Flow**: Uses conversation data for tenant identification (different from Crisp's website_id approach)
+- **Environment Configuration**: Updated to support both chat platforms with separate API credentials
+
+### Version 1.1 (Crisp Integration Update)
+- Added `crisp_website_id` to `tenants` table for single Crisp account multi-tenant support
+- Added index on `crisp_website_id` for efficient lookups
+- Updated tenant onboarding to include Crisp website creation
+- **Webhook Flow**: System now uses `website_id` from Crisp webhook payload to identify tenants
+- **Removed API Key Dependency**: Webhook no longer requires hardcoded API keys in headers
+
 ### Version 1.0 (Initial Multi-Tenant Schema)
 - Added `tenants` table for customer accounts
 - Added `api_keys` table for authentication
@@ -167,6 +185,8 @@ interface Tenant {
   email: string;
   subscription_status: 'trial' | 'active' | 'suspended' | 'cancelled';
   subscription_plan: 'basic' | 'pro' | 'enterprise';
+  crisp_website_id: string | null;
+  tidio_website_id: string | null;
   created_at: Date;
   updated_at: Date;
   is_active: boolean;

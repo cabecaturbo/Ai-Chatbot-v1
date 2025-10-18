@@ -14,8 +14,9 @@ graph TB
         WebsiteN[Business Website N]
     end
     
-    subgraph "Crisp Chat Platform"
+    subgraph "Chat Platform (Choose One)"
         Crisp[Crisp Chat Widgets]
+        Tidio[Tidio Chat Widgets]
     end
     
     subgraph "Netia AI Platform"
@@ -42,11 +43,15 @@ graph TB
     
     %% Customer website interactions
     Website1 --> Crisp
+    Website1 --> Tidio
     Website2 --> Crisp
+    Website2 --> Tidio
     WebsiteN --> Crisp
+    WebsiteN --> Tidio
     
-    %% Crisp to API
+    %% Chat platform to API
     Crisp -->|Webhook| API
+    Tidio -->|Webhook| API
     
     %% API internal connections
     API --> DB
@@ -82,8 +87,9 @@ graph TB
 - Prometheus metrics and monitoring
 
 **API Endpoints:**
-- `POST /api/v1/chat` - Public chat API
-- `POST /api/v1/crisp/webhook` - Crisp integration
+- `POST /api/v1/chat` - Public chat API (requires API key)
+- `POST /crisp/webhook` - Crisp integration (uses website_id for tenant identification)
+- `POST /tidio/webhook` - Tidio integration (uses conversation data for tenant identification)
 - `GET /api/v1/health` - Health check
 - `GET /api/v1/metrics` - Prometheus metrics
 - `GET /api/v1/admin/*` - Admin management endpoints
@@ -95,7 +101,7 @@ graph TB
 - Next.js 14 with TypeScript
 - Tailwind CSS for styling
 - React Hook Form with Zod validation
-- JWT authentication
+- Neon Auth (passwordless magic link authentication)
 
 **Key Features:**
 - Role-based access (Admin vs Customer)
@@ -110,7 +116,7 @@ graph TB
 **Core Tables:**
 ```sql
 -- Tenant management
-tenants (id, name, email, subscription_status, created_at)
+tenants (id, name, email, subscription_status, crisp_website_id, tidio_website_id, created_at)
 api_keys (id, tenant_id, key_hash, name, permissions, created_at)
 
 -- Tenant-specific data
@@ -127,17 +133,17 @@ knowledge_bases (id, tenant_id, content, updated_at)
 
 ### 1. Customer Website Interaction
 ```
-Website Visitor → Types message in Crisp widget
+Website Visitor → Types message in chat widget (Crisp or Tidio)
                 ↓
-            Crisp Platform → Sends webhook to Netia API
+            Chat Platform → Sends webhook to Netia API
                 ↓
-            Netia API → Identifies tenant via API key
+            Netia API → Identifies tenant via website_id (Crisp) or conversation data (Tidio)
                 ↓
             Netia API → Processes with AI and tenant config
                 ↓
-            Netia API → Sends response back to Crisp
+            Netia API → Sends response back to chat platform
                 ↓
-            Crisp Platform → Shows response to visitor
+            Chat Platform → Shows response to visitor
 ```
 
 ### 2. Admin/Customer Management
@@ -154,8 +160,9 @@ Admin/Customer → Logs into web dashboard
 ## Security Architecture
 
 ### Authentication & Authorization
-- **API Keys**: Tenant identification for chatbot requests
-- **JWT Tokens**: User authentication for web dashboard
+- **Website ID**: Tenant identification for Crisp webhook requests
+- **API Keys**: Tenant identification for direct API requests
+- **Neon Auth**: Passwordless magic link authentication for web dashboard
 - **Role-based Access**: Admin vs Customer permissions
 - **HMAC Verification**: Crisp webhook security
 

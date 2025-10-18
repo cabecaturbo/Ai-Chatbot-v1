@@ -1,0 +1,16 @@
+{
+  "name": "netia-db-scripts",
+  "version": "1.0.0",
+  "description": "Database setup scripts for Netia AI Chatbot",
+  "scripts": {
+    "setup": "./setup-db.sh",
+    "setup:seed": "./setup-db.sh --with-seed",
+    "setup:clean": "./setup-db.sh --clean --with-seed",
+    "create-tables": "psql $DATABASE_URL -f sql/01-create-tables.sql",
+    "seed-data": "psql $DATABASE_URL -f sql/02-seed-data.sql",
+    "cleanup": "psql $DATABASE_URL -f sql/03-cleanup.sql"
+  },
+  "keywords": ["database", "setup", "sql", "neon", "postgresql"],
+  "author": "Netia AI",
+  "license": "MIT"
+}
