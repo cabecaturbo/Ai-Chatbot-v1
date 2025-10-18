@@ -1,27 +1,36 @@
 {
-  "name": "netia-chatbot-server",
+  "name": "netia-chatbot-monorepo",
   "version": "1.0.0",
-  "description": "A modern chatbot server with WebSocket support",
-  "main": "src/server.js",
+  "description": "Netia AI Chatbot - Multi-tenant SaaS platform",
+  "private": true,
+  "workspaces": [
+    "api",
+    "web"
+  ],
   "scripts": {
-    "dev": "cd netia-bot-safe && npm run dev",
-    "check:health": "cd netia-bot-safe && npm run check:health",
-    "check:webhook": "cd netia-bot-safe && npm run check:webhook",
-    "test:conversations": "cd netia-bot-safe && npm run test:conversations",
-    "test:load": "cd netia-bot-safe && npm run test:load",
-    "prepare": "husky"
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "cd api && npm run dev",
+    "dev:web": "cd web && npm run dev",
+    "build": "npm run build:api && npm run build:web",
+    "build:api": "cd api && npm run build",
+    "build:web": "cd web && npm run build",
+    "start": "concurrently \"npm run start:api\" \"npm run start:web\"",
+    "start:api": "cd api && npm start",
+    "start:web": "cd web && npm start",
+    "test": "npm run test:api && npm run test:web",
+    "test:api": "cd api && npm test",
+    "test:web": "cd web && npm test",
+    "lint": "npm run lint:api && npm run lint:web",
+    "lint:api": "cd api && npm run lint",
+    "lint:web": "cd web && npm run lint",
+    "check:health": "cd api && npm run check:health",
+    "check:webhook": "cd api && npm run check:webhook",
+    "install:all": "npm install && cd api && npm install && cd ../web && npm install"
   },
-  "keywords": ["chatbot", "websocket", "nodejs", "express"],
+  "keywords": ["chatbot", "saas", "multi-tenant", "ai", "monorepo"],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.4",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
-  },
   "devDependencies": {
-    "nodemon": "^3.0.2",
-    "husky": "^9.1.6"
+    "concurrently": "^8.2.2"
   }
 }

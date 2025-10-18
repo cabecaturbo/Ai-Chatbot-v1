@@ -1,21 +1,23 @@
 services:
   - type: web
-    name: netia-bot-safe
+    name: netia-api
     env: node
     plan: starter
-    rootDir: netia-bot-safe
+    rootDir: api
     buildCommand: npm ci
     startCommand: node src/server.js
     envVars:
       - key: PORT
         value: 10000
+      - key: NODE_ENV
+        value: production
       - key: DRY_RUN
-        value: "true"
+        value: "false"
       - key: KILL_SWITCH
         value: "false"
       - key: LOG_LEVEL
         value: info
       - key: OPENAI_MODEL
         value: gpt-4o-mini
-      # Add CRISP_* and OPENAI_API_KEY in dashboard when going live
+      # Add NEON_DATABASE_URL, REDIS_URL, OPENAI_API_KEY, JWT_SECRET, STRIPE_* in dashboard
 

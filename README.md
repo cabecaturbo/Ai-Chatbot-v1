@@ -1,11 +1,41 @@
-# Netia Chatbot Server
+# Netia AI Chatbot - Multi-Tenant SaaS Platform
 
-Production-ready AI chatbot service with Crisp integration, calendar booking, and lead capture.
+A multi-tenant SaaS platform that provides AI-powered chatbots for businesses with Crisp integration, calendar booking, and lead capture.
+
+## Monorepo Structure
+
+```
+/
+├── api/                    # Backend API (Node.js/Express)
+├── web/                    # Internal Dashboard (Next.js)
+├── aidocs/                 # AI-generated documentation
+├── legacy/                 # Legacy code and old docs
+└── package.json           # Root monorepo scripts
+```
 
 ## Quick Start
 
+### Install All Dependencies
+```bash
+npm run install:all
+```
+
+### Development (Both API and Web)
 ```bash
 npm run dev
+```
+
+### Individual Services
+```bash
+# API only
+npm run dev:api
+
+# Web dashboard only  
+npm run dev:web
+```
+
+### Health Checks
+```bash
 npm run check:health
 npm run check:webhook
 ```
