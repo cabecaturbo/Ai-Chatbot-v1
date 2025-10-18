@@ -1,38 +1,271 @@
-# Node
+# =============================================================================
+# NODE.JS & NPM
+# =============================================================================
 node_modules/
 **/node_modules/
-
-# Env
-.env
-**/.env
-.env.*
-
-# Logs
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# =============================================================================
+# ENVIRONMENT VARIABLES
+# =============================================================================
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# =============================================================================
+# LOGS
+# =============================================================================
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
-# Build
-.dist/
+# =============================================================================
+# BUILD OUTPUTS
+# =============================================================================
+# API build outputs
+api/dist/
+api/build/
+api/.dist/
+
+# Web build outputs
+web/.next/
+web/out/
+web/build/
+web/dist/
+
+# General build outputs
 dist/
 build/
+.dist/
+
+# =============================================================================
+# NEXT.JS (Web Dashboard)
+# =============================================================================
+web/.next/
+web/out/
+web/build/
+web/.vercel/
+web/.swc/
+
+# Next.js cache
+web/.next/cache/
+
+# =============================================================================
+# DATABASE
+# =============================================================================
+# SQLite databases (if used for local development)
+*.db
+*.sqlite
+*.sqlite3
+
+# Database dumps
+*.sql
+*.dump
+
+# =============================================================================
+# REDIS
+# =============================================================================
+dump.rdb
+
+# =============================================================================
+# TESTING
+# =============================================================================
+# Jest
 coverage/
+.nyc_output/
 
-# OS/editor
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# =============================================================================
+# OPERATING SYSTEM
+# =============================================================================
+# macOS
 .DS_Store
-Thumbs.db
-.vscode/
-.idea/
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
 
-# Cursor/AI tooling
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# EDITORS & IDEs
+# =============================================================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# =============================================================================
+# AI TOOLING & CURSOR
+# =============================================================================
 .cursor/
 .agent-tools/
+.copilot/
 
-# Next/Vite caches (if present)
-.next/
-.vite/
+# =============================================================================
+# DEPLOYMENT & CLOUD
+# =============================================================================
+# Vercel
+.vercel/
 
-# Misc
+# Netlify
+.netlify/
+
+# AWS
+.aws/
+
+# Docker
+.dockerignore
+
+# =============================================================================
+# TEMPORARY FILES
+# =============================================================================
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Local development
 *.local
+local/
+
+# =============================================================================
+# SECURITY & SECRETS
+# =============================================================================
+# API keys and secrets
+secrets/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# =============================================================================
+# MISC
+# =============================================================================
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
 
