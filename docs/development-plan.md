@@ -17,7 +17,7 @@ This document outlines the development roadmap for transforming the current sing
 ### 🎯 Target Architecture
 - **Multi-Tenant Backend**: Single API serving multiple customers
 - **API Key Authentication**: Tenant identification via API keys
-- **Single Crisp Account**: One Crisp account managing multiple tenant websites
+- **Self-Hosted Papercups**: Open-source chat widget infrastructure
 - **Internal Dashboard**: Web app for admin and customer management
 - **Billing Integration**: Stripe for subscription management
 - **Tenant Isolation**: Complete data separation between customers
@@ -60,7 +60,7 @@ This document outlines the development roadmap for transforming the current sing
 **Goal**: Transform backend to support multiple tenants
 
 #### 2.1 Database Schema Updates
-- [x] Add `tenants` table for customer accounts (with `crisp_website_id`)
+- [x] Add `tenants` table for customer accounts (with `papercups_account_id`)
 - [x] Add `tenant_id` to all existing tables (conversations, messages, leads)
 - [x] Create `tenant_configurations` table for custom settings
 - [x] Add `api_keys` table for authentication
@@ -84,6 +84,49 @@ This document outlines the development roadmap for transforming the current sing
 - [x] Add tenant management endpoints (CRUD operations)
 - [x] Implement tenant-specific rate limiting
 - [x] Fix webhook to use Crisp website_id instead of hardcoded API keys
+
+#### 2.5 Papercups Migration (NEW)
+- [x] **Remove Crisp Integration**
+  - [x] Remove Crisp webhook endpoint and dependencies
+  - [x] Remove Crisp API client and signature verification
+  - [x] Update database schema to remove `crisp_website_id`
+  - [x] Clean up Crisp-specific types and interfaces
+
+- [x] **Papercups Infrastructure Setup**
+  - [x] Deploy self-hosted Papercups instance (Elixir/Phoenix)
+  - [x] Configure Papercups database (PostgreSQL)
+  - [x] Set up Papercups Redis for real-time features
+  - [x] Configure Papercups environment variables
+  - [x] Set up Papercups SSL/TLS certificates
+
+- [x] **Papercups Integration**
+  - [x] Create Papercups account management system
+  - [x] Implement Papercups widget embedding for tenants
+  - [x] Connect Papercups webhooks to our `/chat` API
+  - [x] Add Papercups account ID to tenant database schema
+  - [x] Create Papercups API client for message sending
+  - [x] **Simplified Multi-Tenant Architecture**: Use Papercups account tokens as API keys
+    - [x] Single source of truth for tenant identification
+    - [x] Automatic tenant isolation through Papercups
+    - [x] Simplified authentication using account tokens
+
+#### 2.6 Simplified Multi-Tenant Implementation (NEW)
+- [ ] **Update Authentication System**
+  - [ ] Modify API key validation to use Papercups account tokens
+  - [ ] Remove separate API key management system
+  - [ ] Update middleware to authenticate via account tokens
+- [ ] **Database Schema Updates**
+  - [ ] Simplify tenants table to use account tokens as primary identifiers
+  - [ ] Remove redundant API key storage
+  - [ ] Update tenant lookup functions
+- [ ] **Tenant Onboarding Flow**
+  - [ ] Create Papercups account for new tenants
+  - [ ] Use account token as tenant's API key
+  - [ ] Generate widget code with tenant's account token
+- [ ] **Integration Testing**
+  - [ ] Test end-to-end chat flow with account tokens
+  - [ ] Verify webhook routing by account ID
+  - [ ] Validate tenant isolation
 
 ### Phase 3: Web Dashboard (Weeks 7-10)
 **Goal**: Build internal dashboard for admin and customer management
@@ -181,7 +224,7 @@ The TypeScript migration in Phase 1 provides several key advantages for the mult
 ### Database Schema
 ```sql
 -- Core tenant management
-tenants (id, name, email, subscription_status, crisp_website_id, created_at)
+tenants (id, name, email, subscription_status, papercups_account_id, created_at)
 api_keys (id, tenant_id, key_hash, name, permissions, created_at)
 
 -- Tenant-specific data
@@ -200,9 +243,9 @@ POST /api/v1/chat
 Headers: X-API-Key: tenant-api-key
 Body: { session_id, message }
 
-POST /crisp/webhook
-Headers: X-Crisp-Signature: webhook-signature
-Body: { website_id, event, data: { content, from, session_id } }
+POST /papercups/webhook
+Headers: X-Papercups-Signature: webhook-signature
+Body: { account_id, event, data: { content, from, conversation_id } }
 
 GET /api/v1/admin/tenants
 Headers: Authorization: Bearer admin-token
@@ -255,13 +298,42 @@ Headers: Authorization: Bearer customer-token
 - **Support Load**: Self-service tools and documentation
 - **Revenue Model**: Flexible pricing and free trial options
 
+## Papercups Migration Strategy
+
+### Why Papercups?
+Based on the [Papercups documentation](https://docs.papercups.io/), Papercups offers several advantages for our multi-tenant SaaS:
+
+- **Open Source**: Full control over data and infrastructure
+- **Self-Hosted**: No third-party dependencies or data sharing
+- **Elixir/Phoenix**: Built for real-time, fault-tolerant applications
+- **Custom Widget**: Embeddable React component for tenant websites
+- **Webhook Support**: Real-time event notifications
+- **Multi-Platform**: React, React Native, Flutter support
+- **Team Features**: Built-in collaboration and conversation management
+
+### Migration Benefits
+1. **Data Sovereignty**: Complete control over customer data
+2. **Cost Control**: No per-seat or per-message fees
+3. **Customization**: Full control over widget appearance and behavior
+4. **Integration**: Direct connection to our existing `/chat` API
+5. **Scalability**: Self-hosted infrastructure scales with our needs
+
+### Infrastructure Requirements
+- **Elixir/Phoenix Application**: Main Papercups server
+- **PostgreSQL Database**: Papercups data storage
+- **Redis**: Real-time features and caching
+- **SSL/TLS**: Secure communication
+- **Docker**: Containerized deployment
+- **Load Balancer**: For high availability
+
 ## Implementation Priorities
 
 ### High Priority (Immediate)
-1. **Database Schema**: Multi-tenant data structure
-2. **API Authentication**: API key system
-3. **Data Isolation**: Tenant-specific data filtering
-4. **Basic Web Dashboard**: Admin and customer interfaces
+1. **Papercups Migration**: Remove Crisp, deploy Papercups infrastructure
+2. **Database Schema**: Multi-tenant data structure with Papercups integration
+3. **API Authentication**: API key system
+4. **Data Isolation**: Tenant-specific data filtering
+5. **Basic Web Dashboard**: Admin and customer interfaces
 
 ### Medium Priority (Next Quarter)
 1. **Billing Integration**: Stripe subscription management

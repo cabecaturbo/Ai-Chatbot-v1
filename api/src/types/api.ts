@@ -35,7 +35,7 @@ export interface MetricsResponse {
   http_requests_total: number;
   llm_requests_total: number;
   llm_request_duration_seconds: number;
-  crisp_send_total: number;
+  papercups_send_total: number;
   active_conversations: number;
 }
 

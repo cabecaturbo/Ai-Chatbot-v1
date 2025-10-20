@@ -5,7 +5,7 @@ export interface Tenant {
   email: string;
   subscription_status: 'trial' | 'active' | 'suspended' | 'cancelled';
   subscription_plan: 'basic' | 'pro' | 'enterprise';
-  tidio_website_id: string | null;
+  papercups_account_id: string | null;
   created_at: Date;
   updated_at: Date;
   is_active: boolean;
@@ -98,10 +98,10 @@ export interface SaveLeadParams {
   conversationId?: string;
 }
 
-// Chat widget integration types
-export interface TenantTidioConfig {
+// Papercups integration types
+export interface TenantPapercupsConfig {
   tenantId: string;
-  tidioWebsiteId: string;
+  papercupsAccountId: string;
   isActive: boolean;
 }
 
@@ -109,5 +109,5 @@ export interface CreateTenantParams {
   name: string;
   email: string;
   subscriptionPlan: 'basic' | 'pro' | 'enterprise';
-  tidioWebsiteId?: string;
+  papercupsAccountId?: string;
 }

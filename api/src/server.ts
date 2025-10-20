@@ -7,23 +7,23 @@ import Ajv from 'ajv';
 import { register, Counter, Histogram } from 'prom-client';
 import { httpLogger } from './tools/logger';
 import { buildRateLimiter } from './tools/redis_rate_limit';
-import { ensureSchema, saveMessage, saveLead, getTenantConfiguration, getTenantByWebsiteId, getTenantByTidioWebsiteId } from './tools/db';
+import { ensureSchema, saveMessage, saveLead, getTenantConfiguration, getTenantByAccountId, getTenantById } from './tools/db';
 import { authenticateApiKey } from './middleware/auth';
-import { verifySignature } from './tools/crisp_verify';
-import { verifySignature as verifyTidioSignature } from './tools/tidio_verify';
+import { authenticateAccountToken, requireActiveSubscription } from './middleware/simplified_auth';
+import { verifySignature, extractWebhookData } from './tools/papercups_verify';
+import { sendText } from './tools/papercups_send';
+import { generateWidgetCode, generateSimpleEmbedCode, generateReactWidgetCode } from './tools/widget_generator';
+import { tenantOnboardingService } from './tools/tenant_onboarding';
 
 // Import the new LLM and intent detection modules
 import { NetiaLLM } from './llm/answer';
 import { IntentDetector } from './intents/detect';
-import { redactPII } from './tools/sanitize';
 import { getSystemPrompt, getFaqKb } from './tools/kb_cache';
 import { generateSlots, createEvent } from './flows/calendar';
 import { appendLead } from './tools/leads';
 
 // Import types
 import { 
-  CrispPayload, 
-  TidioPayload,
   IntentResult, 
   AIMessage as Message, 
   LLMContext,
@@ -39,7 +39,7 @@ app.set('trust proxy', 1);
 app.use((req: Request, res: Response, next: NextFunction) => {
   const host = String(req.headers.host || '').split(':')[0]?.toLowerCase() || '';
   const isBrowserMethod = req.method === 'GET' || req.method === 'HEAD';
-  const isApiPath = ['/health', '/metrics', '/crisp/webhook', '/calendar/', '/chat']
+  const isApiPath = ['/health', '/metrics', '/papercups/webhook', '/calendar/', '/chat']
     .some((p) => req.path === p || req.path.startsWith(p));
   if (host === 'netia.ai' && isBrowserMethod && !isApiPath) {
     const target = 'https://www.netia.ai' + (req.originalUrl || '/');
@@ -52,10 +52,10 @@ app.use(helmet({
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
-      "script-src": ["'self'", "https://client.crisp.chat"],
-      "connect-src": ["'self'", "https://client.crisp.chat", "https://storage.crisp.chat"],
-      "img-src": ["'self'", "data:", "https://storage.crisp.chat"],
-      "frame-src": ["'self'", "https://client.crisp.chat"],
+      "script-src": ["'self'"],
+      "connect-src": ["'self'"],
+      "img-src": ["'self'", "data:"],
+      "frame-src": ["'self'"],
     }
   }
 }));
@@ -76,7 +76,7 @@ app.use(cors({
 
 app.use(httpLogger);
 
-// Capture raw body for HMAC verification (e.g., Crisp webhooks)
+// Capture raw body for HMAC verification (e.g., Papercups webhooks)
 app.use(express.json({
   limit: '200kb',
   verify: (req: Request, _res: Response, buf: Buffer) => {
@@ -121,12 +121,6 @@ const llmRequestDuration = new Histogram({
   registers: [register],
 });
 
-const crispSendCounter = new Counter({
-  name: 'crisp_send_total',
-  help: 'Total number of Crisp send attempts',
-  labelNames: ['status'],
-  registers: [register],
-});
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const endTimer = httpRequestDuration.startTimer({ method: req.method, path: req.path });
@@ -163,7 +157,7 @@ app.get('/', (_req: Request, res: Response) => {
     const fs = require('fs');
     const htmlPath = path.join(__dirname, 'public', 'index.html');
     let html = fs.readFileSync(htmlPath, 'utf8');
-    html = html.replace('__CRISP_WEBSITE_ID__', String(process.env['CRISP_WEBSITE_ID'] || ''));
+    html = html.replace('__PAPERCUPS_ACCOUNT_ID__', String(process.env['PAPERCUPS_ACCOUNT_ID'] || ''));
     res.set('Content-Type', 'text/html');
     return res.status(200).send(html);
   } catch (error) {
@@ -186,415 +180,6 @@ const intentDetector = new IntentDetector();
 // Store conversation history (in production, use a proper database)
 const conversationHistory = new Map<string, Message[]>();
 
-// Ajv validation for Crisp webhook payload
-const ajv = new Ajv({ allErrors: true, removeAdditional: 'failing' });
-const crispWebhookSchema = {
-  type: 'object',
-  properties: {
-    website_id: { type: 'string', minLength: 1 },
-    event: { type: 'string', minLength: 1 },
-    data: {
-      type: 'object',
-      properties: {
-        content: { type: 'string', minLength: 1 },
-        from: { type: 'string' },
-        timestamp: { type: 'number' },
-        session_id: { type: 'string' }
-      },
-      required: ['content', 'from']
-    },
-    timestamp: { type: 'number' }
-  },
-  required: ['website_id', 'event', 'data'],
-  additionalProperties: true,
-};
-const validateCrisp = ajv.compile(crispWebhookSchema);
-
-function normalizeCrispPayload(payload: any): CrispPayload | null {
-  if (!payload || typeof payload !== 'object') return null;
-  
-  // Handle new Crisp webhook format
-  if (payload.website_id && payload.event && payload.data) {
-    return {
-      website_id: String(payload.website_id),
-      event: String(payload.event),
-      data: {
-        content: String(payload.data.content || ''),
-        from: String(payload.data.from || 'user'),
-        timestamp: Number(payload.data.timestamp || Date.now()),
-        session_id: payload.data.session_id ? String(payload.data.session_id) : undefined
-      },
-      timestamp: Number(payload.timestamp || Date.now()),
-      // Legacy fields for backward compatibility
-      conversation_id: payload.data.session_id ? String(payload.data.session_id) : undefined,
-      message: payload.data.content ? String(payload.data.content) : undefined
-    };
-  }
-  
-  // Legacy format support
-  if (payload.conversation_id && payload.message) {
-    return {
-      website_id: '', // Will be filled by tenant lookup
-      event: 'message:received',
-      data: {
-        content: String(payload.message),
-        from: 'user',
-        timestamp: Date.now(),
-        session_id: String(payload.conversation_id)
-      },
-      timestamp: Date.now(),
-      conversation_id: String(payload.conversation_id),
-      message: String(payload.message)
-    };
-  }
-  
-  return null;
-}
-
-// Tidio webhook schema & validator
-const tidioWebhookSchema = {
-  type: 'object',
-  properties: {
-    event: { type: 'string', minLength: 1 },
-    data: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            content: { type: 'string', minLength: 1 },
-            from: { type: 'string' },
-            timestamp: { type: 'number' },
-            conversation_id: { type: 'string' }
-          },
-          required: ['content', 'conversation_id']
-        }
-      }
-    },
-    timestamp: { type: 'number' }
-  },
-  required: ['event', 'data', 'timestamp'],
-  additionalProperties: false,
-};
-const validateTidio = ajv.compile(tidioWebhookSchema);
-
-function normalizeTidioPayload(payload: any): TidioPayload | null {
-  if (!payload || typeof payload !== 'object') return null;
-  
-  // Handle Tidio webhook format
-  if (payload.event && payload.data) {
-    return {
-      event: String(payload.event),
-      data: {
-        message: payload.data.message ? {
-          id: String(payload.data.message.id || ''),
-          content: String(payload.data.message.content || ''),
-          from: payload.data.message.from === 'visitor' ? 'visitor' : 'operator',
-          timestamp: Number(payload.data.message.timestamp || Date.now()),
-          conversation_id: String(payload.data.message.conversation_id || ''),
-          visitor_id: payload.data.message.visitor_id ? String(payload.data.message.visitor_id) : undefined,
-          operator_id: payload.data.message.operator_id ? String(payload.data.message.operator_id) : undefined
-        } : undefined,
-        conversation: payload.data.conversation ? {
-          id: String(payload.data.conversation.id || ''),
-          visitor_id: String(payload.data.conversation.visitor_id || ''),
-          status: String(payload.data.conversation.status || ''),
-          created_at: Number(payload.data.conversation.created_at || Date.now())
-        } : undefined,
-        visitor: payload.data.visitor ? {
-          id: String(payload.data.visitor.id || ''),
-          email: payload.data.visitor.email ? String(payload.data.visitor.email) : undefined,
-          name: payload.data.visitor.name ? String(payload.data.visitor.name) : undefined,
-          custom_fields: payload.data.visitor.custom_fields || {}
-        } : undefined
-      },
-      timestamp: Number(payload.timestamp || Date.now()),
-      // Legacy fields for backward compatibility
-      conversation_id: payload.data?.message?.conversation_id ? String(payload.data.message.conversation_id) : undefined,
-      message: payload.data?.message?.content ? String(payload.data.message.content) : undefined
-    };
-  }
-  
-  return null;
-}
-
-app.post('/crisp/webhook', async (req: Request, res: Response) => {
-  if (flags.KILL_SWITCH) {
-    console.log('[KILL_SWITCH] Request ignored. Returning 200.');
-    return res.status(200).json({ ok: true, skipped: true });
-  }
-
-  const secret = process.env['CRISP_WEBHOOK_SECRET'];
-  if (!verifySignature(req, secret)) {
-    return res.status(401).json({ error: 'Invalid signature' });
-  }
-
-  const incoming = req.body;
-  const payload = normalizeCrispPayload(incoming);
-  if (!payload) {
-    return res.status(400).json({ error: 'Invalid payload', details: 'Unsupported Crisp webhook format' });
-  }
-
-  const safeLog = JSON.stringify({
-    website_id: payload && payload.website_id,
-    conversation_id: payload && payload.conversation_id,
-    message: payload && redactPII(payload.data?.content || payload.message),
-  });
-  console.log('[WEBHOOK] payload', safeLog);
-
-  if (!validateCrisp(payload)) {
-    return res.status(400).json({ error: 'Invalid payload', details: validateCrisp.errors });
-  }
-
-  try {
-    // Identify tenant by website ID
-    const tenant = await getTenantByWebsiteId(payload.website_id);
-    if (!tenant) {
-      console.error(`[WEBHOOK] No tenant found for website ID: ${payload.website_id}`);
-      return res.status(404).json({ ok: false, error: 'Tenant not found' });
-    }
-
-    const message = String(payload.data?.content || payload.message || '');
-    const conversationId = String(payload.data?.session_id || payload.conversation_id || '');
-
-    // Get or create conversation history
-    if (!conversationHistory.has(conversationId)) {
-      conversationHistory.set(conversationId, []);
-    }
-    const history = conversationHistory.get(conversationId);
-    if (!history) {
-      return res.status(500).json({ ok: false, error: 'Failed to get conversation history' });
-    }
-
-    // Add user message to history
-    history.push({
-      role: 'user',
-      content: message,
-      timestamp: new Date().toISOString()
-    });
-    await saveMessage(tenant.id, conversationId, 'user', message);
-
-    // Detect intent
-    const intentResult: IntentResult = intentDetector.detectIntent(message);
-    console.log('[INTENT]', JSON.stringify(intentResult));
-
-    // Generate response using LLM with metrics
-    const endLlmTimer = llmRequestDuration.startTimer();
-    let response: string;
-    try {
-      const context: LLMContext = {
-        systemPrompt: getSystemPrompt(),
-        faq: getFaqKb(),
-        demoMode: flags.DEMO_MODE,
-      };
-      response = await llm.generateResponse(message, history, intentResult, context);
-      llmRequestCounter.inc({ status: 'ok' });
-    } catch (error) {
-      llmRequestCounter.inc({ status: 'error' });
-      throw error;
-    } finally {
-      endLlmTimer();
-    }
-
-    // Add assistant response to history
-    history.push({
-      role: 'assistant',
-      content: response,
-      timestamp: new Date().toISOString()
-    });
-    await saveMessage(tenant.id, conversationId, 'assistant', response);
-
-    // Keep history manageable (last 20 messages)
-    if (history.length > 20) {
-      history.splice(0, history.length - 20);
-    }
-
-    if (flags.DRY_RUN) {
-      console.log(`[CRISP][DRY] sendText conv=${conversationId}: ${response}`);
-      console.log(`[CRISP][DRY] Intent: ${intentResult.intent}, Confidence: ${intentResult.confidence}`);
-    } else {
-      // Live send to Crisp using tenant's specific website ID
-      const { sendText } = require('./tools/crisp_send');
-      try {
-        // Use tenant's specific Crisp website ID (already retrieved)
-        if (!tenant.crisp_website_id) {
-          console.error(`[CRISP] No website ID found for tenant ${tenant.id}`);
-          crispSendCounter.inc({ status: 'error' });
-          return res.status(500).json({ 
-            ok: false, 
-            error: 'Tenant Crisp configuration not found' 
-          });
-        }
-        
-        await sendText({ websiteId: tenant.crisp_website_id, conversationId, text: response });
-        crispSendCounter.inc({ status: 'ok' });
-      } catch (error) {
-        crispSendCounter.inc({ status: 'error' });
-        console.error('Crisp send error:', error);
-      }
-    }
-
-    // Append lead on booking/pricing intents (demo-safe)
-    if (intentResult.intent === 'booking' || intentResult.intent === 'pricing') {
-      appendLead({ intent: intentResult.intent }, { dryRun: flags.DRY_RUN });
-      await saveLead(tenant.id, intentResult.intent, conversationId);
-    }
-
-    const chatResponse: ChatResponse = {
-      ok: true,
-      intent: intentResult.intent,
-      confidence: intentResult.confidence,
-      entities: intentResult.entities,
-      missing_slots: intentResult.missing_slots,
-      response
-    };
-
-    return res.json(chatResponse);
-  } catch (error) {
-    console.error('[ERROR]', error);
-    return res.status(500).json({ ok: false, error: (error as Error).message });
-  }
-});
-
-// Tidio webhook handler
-app.post('/tidio/webhook', async (req: Request, res: Response) => {
-  if (flags.KILL_SWITCH) {
-    console.log('[KILL_SWITCH] Request ignored. Returning 200.');
-    return res.status(200).json({ ok: true, skipped: true });
-  }
-
-  const secret = process.env['TIDIO_WEBHOOK_SECRET'];
-  if (!verifyTidioSignature(req, secret)) {
-    return res.status(401).json({ error: 'Invalid signature' });
-  }
-
-  const incoming = req.body;
-  const payload = normalizeTidioPayload(incoming);
-  if (!payload) {
-    return res.status(400).json({ error: 'Invalid payload', details: 'Unsupported Tidio webhook format' });
-  }
-
-  const safeLog = JSON.stringify({
-    event: payload.event,
-    conversation_id: payload.data?.message?.conversation_id || payload.data?.conversation?.id,
-    message: payload.data?.message ? redactPII(payload.data.message.content) : 'No message',
-  });
-  console.log('[TIDIO WEBHOOK] payload', safeLog);
-
-  if (!validateTidio(payload)) {
-    return res.status(400).json({ error: 'Invalid payload', details: validateTidio.errors });
-  }
-
-  try {
-    // For Tidio, we need to identify the tenant differently
-    // Since Tidio doesn't use website_id in the same way, we'll need to use conversation data
-    const conversationId = payload.data?.message?.conversation_id || payload.data?.conversation?.id;
-    if (!conversationId) {
-      console.error('[TIDIO WEBHOOK] No conversation ID found in payload');
-      return res.status(400).json({ ok: false, error: 'No conversation ID found' });
-    }
-
-    // For now, we'll use a default tenant or implement tenant identification logic
-    // This will need to be updated based on how you want to identify tenants with Tidio
-    const tenant = await getTenantByTidioWebsiteId('default'); // This needs to be implemented
-    if (!tenant) {
-      console.error(`[TIDIO WEBHOOK] No tenant found for conversation: ${conversationId}`);
-      return res.status(404).json({ ok: false, error: 'Tenant not found' });
-    }
-
-    const message = String(payload.data?.message?.content || '');
-    if (!message) {
-      return res.status(400).json({ ok: false, error: 'No message content found' });
-    }
-
-    // Get or create conversation history
-    if (!conversationHistory.has(conversationId)) {
-      conversationHistory.set(conversationId, []);
-    }
-    const history = conversationHistory.get(conversationId);
-    if (!history) {
-      return res.status(500).json({ ok: false, error: 'Failed to get conversation history' });
-    }
-
-    // Add user message to history
-    history.push({
-      role: 'user',
-      content: message,
-      timestamp: new Date().toISOString()
-    });
-    await saveMessage(tenant.id, conversationId, 'user', message);
-
-    // Detect intent
-    const intentResult: IntentResult = intentDetector.detectIntent(message);
-    console.log('[INTENT]', JSON.stringify(intentResult));
-
-    // Generate response using LLM with metrics
-    const endLlmTimer = llmRequestDuration.startTimer();
-    let response: string;
-    try {
-      const context: LLMContext = {
-        systemPrompt: getSystemPrompt(),
-        faq: getFaqKb(),
-        demoMode: flags.DEMO_MODE,
-      };
-      response = await llm.generateResponse(message, history, intentResult, context);
-      llmRequestCounter.inc({ status: 'ok' });
-    } catch (error) {
-      llmRequestCounter.inc({ status: 'error' });
-      throw error;
-    } finally {
-      endLlmTimer();
-    }
-
-    // Add assistant response to history
-    history.push({
-      role: 'assistant',
-      content: response,
-      timestamp: new Date().toISOString()
-    });
-    await saveMessage(tenant.id, conversationId, 'assistant', response);
-
-    // Keep history manageable (last 20 messages)
-    if (history.length > 20) {
-      history.splice(0, history.length - 20);
-    }
-
-    if (flags.DRY_RUN) {
-      console.log(`[TIDIO][DRY] sendText conv=${conversationId}: ${response}`);
-      console.log(`[TIDIO][DRY] Intent: ${intentResult.intent}, Confidence: ${intentResult.confidence}`);
-    } else {
-      // Live send to Tidio
-      const { sendText } = require('./tools/tidio_send');
-      try {
-        await sendText({ websiteId: 'default', conversationId, text: response });
-        // Note: We'll need to add tidioSendCounter similar to crispSendCounter
-      } catch (error) {
-        console.error('Tidio send error:', error);
-      }
-    }
-
-    // Append lead on booking/pricing intents (demo-safe)
-    if (intentResult.intent === 'booking' || intentResult.intent === 'pricing') {
-      appendLead({ intent: intentResult.intent }, { dryRun: flags.DRY_RUN });
-      await saveLead(tenant.id, intentResult.intent, conversationId);
-    }
-
-    const chatResponse: ChatResponse = {
-      ok: true,
-      intent: intentResult.intent,
-      confidence: intentResult.confidence,
-      entities: intentResult.entities,
-      missing_slots: intentResult.missing_slots,
-      response
-    };
-
-    return res.json(chatResponse);
-  } catch (error) {
-    console.error('[TIDIO ERROR]', error);
-    return res.status(500).json({ ok: false, error: (error as Error).message });
-  }
-});
 
 // Public chat schema & validator (session-based, no HMAC)
 const chatSchema = {
@@ -606,6 +191,7 @@ const chatSchema = {
   required: ['session_id', 'message'],
   additionalProperties: false,
 };
+const ajv = new Ajv({ allErrors: true, removeAdditional: 'failing' });
 const validateChat = ajv.compile(chatSchema);
 
 app.post('/chat', authenticateApiKey, async (req: Request, res: Response) => {
@@ -699,12 +285,150 @@ app.post('/chat', authenticateApiKey, async (req: Request, res: Response) => {
   }
 });
 
+// Papercups webhook endpoint
+app.post('/papercups/webhook', async (req: Request, res: Response) => {
+  if (flags.KILL_SWITCH) {
+    console.log('[KILL_SWITCH] Request ignored. Returning 200.');
+    return res.status(200).json({ ok: true, skipped: true });
+  }
+
+  const secret = process.env['PAPERCUPS_WEBHOOK_SECRET'];
+  if (!verifySignature(req, secret)) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  const payload = extractWebhookData(req);
+  if (!payload) {
+    return res.status(400).json({ error: 'Invalid payload', details: 'Unsupported Papercups webhook format' });
+  }
+
+  const safeLog = JSON.stringify({
+    type: payload.type,
+    account_id: payload.account_id,
+    conversation_id: payload.data?.conversation_id,
+    message: payload.data?.body ? payload.data.body.substring(0, 100) + '...' : 'No message',
+  });
+  console.log('[PAPERCUPS WEBHOOK] payload', safeLog);
+
+  try {
+    // Handle webhook verification
+    if (payload.type === 'webhook:verify') {
+      console.log('[PAPERCUPS WEBHOOK] Verification request received');
+      return res.status(200).json({ payload: payload.payload || 'verified' });
+    }
+
+    // Only process message events
+    if (payload.type !== 'message:created' || !payload.data) {
+      return res.status(200).json({ ok: true, message: 'Event type not processed' });
+    }
+
+    // Identify tenant by account ID
+    const tenant = await getTenantByAccountId(payload.account_id);
+    if (!tenant) {
+      console.error(`[PAPERCUPS WEBHOOK] No tenant found for account ID: ${payload.account_id}`);
+      return res.status(404).json({ ok: false, error: 'Tenant not found' });
+    }
+
+    const message = String(payload.data.body || '');
+    const conversationId = String(payload.data.conversation_id || '');
+
+    // Get or create conversation history
+    if (!conversationHistory.has(conversationId)) {
+      conversationHistory.set(conversationId, []);
+    }
+    const history = conversationHistory.get(conversationId);
+    if (!history) {
+      return res.status(500).json({ ok: false, error: 'Failed to get conversation history' });
+    }
+
+    // Add user message to history
+    history.push({
+      role: 'user',
+      content: message,
+      timestamp: new Date().toISOString()
+    });
+    await saveMessage(tenant.id, conversationId, 'user', message);
+
+    // Detect intent
+    const intentResult: IntentResult = intentDetector.detectIntent(message);
+    console.log('[INTENT]', JSON.stringify(intentResult));
+
+    // Generate response using LLM with metrics
+    const endLlmTimer = llmRequestDuration.startTimer();
+    let response: string;
+    try {
+      const context: LLMContext = {
+        systemPrompt: getSystemPrompt(),
+        faq: getFaqKb(),
+        demoMode: flags.DEMO_MODE,
+      };
+      response = await llm.generateResponse(message, history, intentResult, context);
+      llmRequestCounter.inc({ status: 'ok' });
+    } catch (error) {
+      llmRequestCounter.inc({ status: 'error' });
+      throw error;
+    } finally {
+      endLlmTimer();
+    }
+
+    // Add assistant response to history
+    history.push({
+      role: 'assistant',
+      content: response,
+      timestamp: new Date().toISOString()
+    });
+    await saveMessage(tenant.id, conversationId, 'assistant', response);
+
+    // Keep history bounded
+    if (history.length > 20) {
+      history.splice(0, history.length - 20);
+    }
+
+    if (flags.DRY_RUN) {
+      console.log(`[PAPERCUPS][DRY] sendText conv=${conversationId}: ${response}`);
+      console.log(`[PAPERCUPS][DRY] Intent: ${intentResult.intent}, Confidence: ${intentResult.confidence}`);
+    } else {
+      // Live send to Papercups
+      try {
+        await sendText({ 
+          accountId: payload.account_id, 
+          conversationId, 
+          text: response,
+          userId: payload.data.user_id
+        });
+      } catch (error) {
+        console.error('Papercups send error:', error);
+      }
+    }
+
+    // Optional lead capture on relevant intents
+    if (intentResult.intent === 'booking' || intentResult.intent === 'pricing') {
+      appendLead({ intent: intentResult.intent }, { dryRun: flags.DRY_RUN });
+      await saveLead(tenant.id, intentResult.intent, conversationId);
+    }
+
+    const chatResponse: ChatResponse = {
+      ok: true,
+      intent: intentResult.intent,
+      confidence: intentResult.confidence,
+      entities: intentResult.entities,
+      missing_slots: intentResult.missing_slots,
+      response,
+    };
+
+    return res.json(chatResponse);
+  } catch (error) {
+    console.error('[PAPERCUPS ERROR]', error);
+    return res.status(500).json({ ok: false, error: (error as Error).message });
+  }
+});
+
 // Tenant management endpoints
 app.get('/api/v1/tenant/info', authenticateApiKey, async (req: Request, res: Response) => {
   try {
     const tenant = req.tenant!;
     const tenantInfo = {
-      id: tenant.tenantId,
+      id: tenant.id,
       name: tenant.tenantName,
       subscriptionStatus: tenant.subscriptionStatus,
       subscriptionPlan: tenant.subscriptionPlan,
@@ -728,12 +452,211 @@ app.get('/api/v1/tenant/config/:configType', authenticateApiKey, async (req: Req
     if (!configType) {
       return res.status(400).json({ ok: false, error: 'Config type is required' });
     }
-    const config = await getTenantConfiguration(tenant.tenantId, configType);
+    const config = await getTenantConfiguration(tenant.id, configType);
     
     return res.json({ ok: true, configType, config });
   } catch (error) {
     console.error('Error getting tenant config:', error);
     return res.status(500).json({ ok: false, error: (error as Error).message });
+  }
+});
+
+// Widget code generation endpoints
+app.get('/api/v1/tenant/widget-code', authenticateAccountToken, requireActiveSubscription, async (req: Request, res: Response) => {
+  try {
+    const tenant = req.simplifiedTenant!;
+    const { format = 'html', customizations } = req.query;
+    
+    // Get tenant details from database
+    const tenantDetails = await getTenantById(tenant.id);
+    if (!tenantDetails) {
+      return res.status(404).json({ ok: false, error: 'Tenant not found' });
+    }
+
+    if (!tenantDetails.papercups_account_id) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Tenant does not have a Papercups account configured' 
+      });
+    }
+
+    const options = {
+      tenant: tenantDetails,
+      customizations: customizations ? JSON.parse(customizations as string) : undefined
+    };
+
+    let widgetCode: string;
+    switch (format) {
+      case 'simple':
+        widgetCode = generateSimpleEmbedCode(options);
+        break;
+      case 'react':
+        widgetCode = generateReactWidgetCode(options);
+        break;
+      case 'html':
+      default:
+        widgetCode = generateWidgetCode(options);
+        break;
+    }
+
+    return res.json({ 
+      ok: true, 
+      widgetCode,
+      format,
+      tenant: {
+        id: tenantDetails.id,
+        name: tenantDetails.name,
+        papercups_account_id: tenantDetails.papercups_account_id
+      }
+    });
+  } catch (error) {
+    console.error('Error generating widget code:', error);
+    return res.status(500).json({ ok: false, error: (error as Error).message });
+  }
+});
+
+app.get('/api/v1/tenant/widget-code/raw', authenticateAccountToken, requireActiveSubscription, async (req: Request, res: Response) => {
+  try {
+    const tenant = req.simplifiedTenant!;
+    const { format = 'html', customizations } = req.query;
+    
+    // Get tenant details from database
+    const tenantDetails = await getTenantById(tenant.id);
+    if (!tenantDetails) {
+      return res.status(404).json({ ok: false, error: 'Tenant not found' });
+    }
+
+    if (!tenantDetails.papercups_account_id) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Tenant does not have a Papercups account configured' 
+      });
+    }
+
+    const options = {
+      tenant: tenantDetails,
+      customizations: customizations ? JSON.parse(customizations as string) : undefined
+    };
+
+    let widgetCode: string;
+    switch (format) {
+      case 'simple':
+        widgetCode = generateSimpleEmbedCode(options);
+        break;
+      case 'react':
+        widgetCode = generateReactWidgetCode(options);
+        break;
+      case 'html':
+      default:
+        widgetCode = generateWidgetCode(options);
+        break;
+    }
+
+    // Return raw widget code as plain text
+    res.set('Content-Type', 'text/plain');
+    return res.send(widgetCode);
+  } catch (error) {
+    console.error('Error generating widget code:', error);
+    return res.status(500).json({ ok: false, error: (error as Error).message });
+  }
+});
+
+// Tenant Management Endpoints
+app.post('/api/v1/tenants/onboard', async (req: Request, res: Response) => {
+  try {
+    const { name, email, companyName, subscriptionPlan } = req.body;
+    
+    if (!name || !email) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        message: 'Name and email are required' 
+      });
+    }
+
+    const result = await tenantOnboardingService.onboardTenant({
+      name,
+      email,
+      companyName,
+      subscriptionPlan
+    });
+
+    return res.status(201).json({
+      ok: true,
+      data: result,
+      message: 'Tenant onboarded successfully'
+    });
+
+  } catch (error) {
+    console.error('Error onboarding tenant:', error);
+    return res.status(500).json({ 
+      ok: false, 
+      error: (error as Error).message 
+    });
+  }
+});
+
+app.get('/api/v1/tenant/info', authenticateAccountToken, async (req: Request, res: Response) => {
+  try {
+    const tenant = req.simplifiedTenant!;
+    const tenantInfo = await tenantOnboardingService.getTenantInfo(tenant.id);
+    
+    if (!tenantInfo) {
+      return res.status(404).json({ 
+        ok: false, 
+        error: 'Tenant not found' 
+      });
+    }
+
+    return res.json({
+      ok: true,
+      data: tenantInfo
+    });
+
+  } catch (error) {
+    console.error('Error getting tenant info:', error);
+    return res.status(500).json({ 
+      ok: false, 
+      error: (error as Error).message 
+    });
+  }
+});
+
+app.put('/api/v1/tenant/subscription', authenticateAccountToken, async (req: Request, res: Response) => {
+  try {
+    const tenant = req.simplifiedTenant!;
+    const { subscriptionPlan, subscriptionStatus } = req.body;
+    
+    if (!subscriptionPlan || !subscriptionStatus) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        message: 'subscriptionPlan and subscriptionStatus are required' 
+      });
+    }
+
+    const success = await tenantOnboardingService.updateTenantSubscription(
+      tenant.id,
+      subscriptionPlan,
+      subscriptionStatus
+    );
+
+    if (!success) {
+      return res.status(500).json({ 
+        ok: false, 
+        error: 'Failed to update subscription' 
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: 'Subscription updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating subscription:', error);
+    return res.status(500).json({ 
+      ok: false, 
+      error: (error as Error).message 
+    });
   }
 });
 

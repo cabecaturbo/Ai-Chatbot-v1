@@ -1,4 +1,4 @@
-import { IntentResult } from '@/types/ai';
+import { IntentResult } from '../types/ai';
 
 const BOOKING_KEYWORDS = [
   'book', 'booking', 'schedule', 'appointment', 'reserve'

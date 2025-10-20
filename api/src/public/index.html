@@ -13,7 +13,7 @@
     .links a { display: inline-block; margin-right: 16px; }
     code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; }
   </style>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' https://client.crisp.chat; connect-src 'self' https://client.crisp.chat https://storage.crisp.chat; frame-src 'self' https://client.crisp.chat;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https:; script-src 'self' https://papercups.netia.ai; connect-src 'self' https://papercups.netia.ai; frame-src 'self' https://papercups.netia.ai;">
 </head>
 <body>
   <div class="wrap">
@@ -24,16 +24,16 @@
       <a href="/metrics">/metrics</a>
       <a href="/calendar/slots">/calendar/slots</a>
     </p>
-    <p>If you set <code>CRISP_WEBSITE_ID</code> in the environment, the Crisp chat bubble appears automatically.</p>
+    <p>If you set <code>PAPERCUPS_ACCOUNT_ID</code> in the environment, the Papercups chat widget appears automatically.</p>
   </div>
 
   <script>
     (function() {
-      var WEBSITE_ID = "__CRISP_WEBSITE_ID__";
-      if (WEBSITE_ID && WEBSITE_ID.length > 0) {
-        window.$crisp = []; window.CRISP_WEBSITE_ID = WEBSITE_ID;
-        var d = document; var s = d.createElement("script");
-        s.src = "https://client.crisp.chat/l.js"; s.async = 1; d.getElementsByTagName("head")[0].appendChild(s);
+      var ACCOUNT_ID = "__PAPERCUPS_ACCOUNT_ID__";
+      if (ACCOUNT_ID && ACCOUNT_ID.length > 0) {
+        // Papercups widget will be embedded here
+        // This is a placeholder for the actual Papercups widget integration
+        console.log('Papercups Account ID:', ACCOUNT_ID);
       }
     })();
   </script>
@@ -62,14 +62,21 @@
     <div class="container">
       <div class="card">
         <h1>Netia Chatbot</h1>
-        <p>This is your Netia Chatbot service. The Crisp widget is embedded so visitors can chat with you immediately.</p>
-        <p class="meta">Set <code>CRISP_WEBSITE_ID</code> in your environment to enable the widget.</p>
+        <p>This is your Netia Chatbot service. The Papercups widget is embedded so visitors can chat with you immediately.</p>
+        <p class="meta">Set <code>PAPERCUPS_ACCOUNT_ID</code> in your environment to enable the widget.</p>
         <a class="cta" href="/health">Check Health</a>
         <a class="cta" href="/metrics" style="margin-left:8px;">View Metrics</a>
       </div>
     </div>
 
-    <script type="text/javascript">window.$crisp=[];window.CRISP_WEBSITE_ID="__CRISP_WEBSITE_ID__";(function(){d=document;s=d.createElement("script");s.src="https://client.crisp.chat/l.js";s.async=1;d.getElementsByTagName("head")[0].appendChild(s);})();</script>
+    <script type="text/javascript">
+      // Papercups widget integration placeholder
+      var ACCOUNT_ID = "__PAPERCUPS_ACCOUNT_ID__";
+      if (ACCOUNT_ID && ACCOUNT_ID.length > 0) {
+        console.log('Papercups Account ID:', ACCOUNT_ID);
+        // TODO: Implement actual Papercups widget embedding
+      }
+    </script>
   </body>
   </html>
 

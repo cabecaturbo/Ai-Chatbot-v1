@@ -1,24 +1,19 @@
-import { IntentResult, Message, LLMContext } from '@/types/ai';
-import { DEMO_TEMPLATES } from '@/tools/demo_templates';
+import { IntentResult, Message, LLMContext } from '../types/ai';
+import { DEMO_TEMPLATES } from '../tools/demo_templates';
+import { generate } from './openai_client';
 
 const DEFAULT_PRICING = 'Our plans start at $29/mo. Need more details?';
 const DEFAULT_BOOKING = 'I can help book an appointment. What date and time works for you?';
 const DEFAULT_FAQ = 'You can find hours and location on our website. What else can I help with?';
 const DEFAULT_FALLBACK = 'Happy to help! Could you share a bit more about your request?';
 
-interface OpenAIClient {
-  generate(params: {
-    messages: Array<{ role: string; content: string }>;
-  }): Promise<string>;
-}
+// OpenAIClient interface removed - now using direct import
 
 export class NetiaLLM {
   private isDryRun: boolean;
-  private live: OpenAIClient;
 
   constructor(isDryRun: boolean) {
     this.isDryRun = Boolean(isDryRun);
-    this.live = require('./openai_client');
   }
 
   async generateResponse(
@@ -48,7 +43,7 @@ export class NetiaLLM {
 
     // Live mode
     try {
-      const content = await this.live.generate({
+      const content = await generate({
         messages: [
           { role: 'system', content: context?.systemPrompt || '' },
           ...history,

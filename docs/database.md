@@ -7,7 +7,7 @@ This document contains the complete database schema for the Netia AI Chatbot mul
 ### Core Tables
 
 #### `tenants`
-Stores customer account information and subscription details.
+Stores customer account information and subscription details. The `papercups_account_id` serves as both the Papercups account identifier and the API key for authentication.
 
 ```sql
 CREATE TABLE tenants (
@@ -16,8 +16,8 @@ CREATE TABLE tenants (
     email VARCHAR(255) UNIQUE NOT NULL,
     subscription_status VARCHAR(50) DEFAULT 'trial',
     subscription_plan VARCHAR(50) DEFAULT 'basic',
-    crisp_website_id VARCHAR(255) UNIQUE,
-    tidio_website_id VARCHAR(255) UNIQUE,
+    papercups_account_id VARCHAR(255) UNIQUE NOT NULL, -- Serves as API key
+    papercups_inbox_id VARCHAR(255), -- Optional: specific inbox for tenant
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     is_active BOOLEAN DEFAULT true
@@ -25,14 +25,20 @@ CREATE TABLE tenants (
 
 CREATE INDEX idx_tenants_email ON tenants(email);
 CREATE INDEX idx_tenants_status ON tenants(subscription_status);
-CREATE INDEX idx_tenants_crisp_website_id ON tenants(crisp_website_id);
-CREATE INDEX idx_tenants_tidio_website_id ON tenants(tidio_website_id);
+CREATE INDEX idx_tenants_papercups_account_id ON tenants(papercups_account_id);
 ```
 
-#### `api_keys`
-Stores API keys for tenant authentication.
+**Note**: The `papercups_account_id` field serves dual purposes:
+- **Papercups Integration**: Identifies the tenant's Papercups account
+- **API Authentication**: Used as the API key for all tenant requests
+- **Webhook Routing**: Identifies which tenant a webhook belongs to
+
+#### `api_keys` (DEPRECATED)
+~~Stores API keys for tenant authentication.~~ **This table is deprecated in favor of using Papercups account tokens directly.**
 
 ```sql
+-- DEPRECATED: This table will be removed in future versions
+-- API keys are now handled via papercups_account_id in tenants table
 CREATE TABLE api_keys (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -47,6 +53,48 @@ CREATE TABLE api_keys (
 CREATE INDEX idx_api_keys_tenant_id ON api_keys(tenant_id);
 CREATE INDEX idx_api_keys_hash ON api_keys(key_hash);
 ```
+
+**Migration Path**: 
+- Existing API keys will be gradually replaced with Papercups account tokens
+- New tenants will only use `papercups_account_id` for authentication
+- This table will be removed once all tenants are migrated
+
+## Authentication Flow
+
+### Unified Token System
+The system uses a single token (`papercups_account_id`) for all tenant operations:
+
+1. **Tenant Creation**: 
+   - Create Papercups account → Get account token
+   - Store token as `papercups_account_id` in tenants table
+   - Token serves as both Papercups identifier and API key
+
+2. **API Authentication**:
+   ```sql
+   -- Lookup tenant by account token (used as API key)
+   SELECT * FROM tenants WHERE papercups_account_id = $1 AND is_active = true;
+   ```
+
+3. **Webhook Processing**:
+   ```sql
+   -- Same lookup for webhook routing
+   SELECT * FROM tenants WHERE papercups_account_id = $1 AND is_active = true;
+   ```
+
+4. **Widget Generation**:
+   ```javascript
+   // Embed account token in widget code
+   window.Papercups = {
+     token: tenant.papercups_account_id,
+     inbox: tenant.papercups_inbox_id
+   };
+   ```
+
+### Benefits
+- **Single Source of Truth**: One token for all operations
+- **Automatic Isolation**: Papercups handles tenant separation
+- **Simplified Architecture**: No separate API key management
+- **Easier Debugging**: Same identifier across all systems
 
 ### Tenant-Specific Data Tables
 
@@ -150,12 +198,12 @@ CREATE INDEX idx_kb_active ON knowledge_bases(is_active);
 
 ## Schema Evolution History
 
-### Version 1.2 (Tidio Integration Support)
-- Added `tidio_website_id` to `tenants` table for Tidio chat widget support
-- Added index on `tidio_website_id` for efficient lookups
-- **Dual Chat Platform Support**: System now supports both Crisp and Tidio chat widgets
-- **Tidio Webhook Flow**: Uses conversation data for tenant identification (different from Crisp's website_id approach)
-- **Environment Configuration**: Updated to support both chat platforms with separate API credentials
+### Version 1.2 (Papercups Migration)
+- Replace `crisp_website_id` with `papercups_account_id` in `tenants` table
+- Update index from `crisp_website_id` to `papercups_account_id`
+- **Webhook Flow**: System now uses `account_id` from Papercups webhook payload to identify tenants
+- **Self-Hosted Infrastructure**: Deploy Papercups Elixir/Phoenix server
+- **Direct Integration**: Connect Papercups widget directly to our `/chat` API
 
 ### Version 1.1 (Crisp Integration Update)
 - Added `crisp_website_id` to `tenants` table for single Crisp account multi-tenant support
@@ -185,8 +233,7 @@ interface Tenant {
   email: string;
   subscription_status: 'trial' | 'active' | 'suspended' | 'cancelled';
   subscription_plan: 'basic' | 'pro' | 'enterprise';
-  crisp_website_id: string | null;
-  tidio_website_id: string | null;
+  papercups_account_id: string | null;
   created_at: Date;
   updated_at: Date;
   is_active: boolean;

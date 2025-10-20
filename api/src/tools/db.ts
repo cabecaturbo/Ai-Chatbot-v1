@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { DatabasePool } from '@/types/database';
+import { DatabasePool } from '../types/database';
 
 const connectionString = process.env['DATABASE_URL'];
 let pool: Pool | null = null;
@@ -32,7 +32,8 @@ async function ensureSchema(): Promise<void> {
         email VARCHAR(255) UNIQUE NOT NULL,
         subscription_status VARCHAR(50) DEFAULT 'trial',
         subscription_plan VARCHAR(50) DEFAULT 'basic',
-        tidio_website_id VARCHAR(255) UNIQUE,
+        papercups_account_id VARCHAR(255) UNIQUE NOT NULL,
+        papercups_inbox_id VARCHAR(255),
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         is_active BOOLEAN DEFAULT true
@@ -40,7 +41,19 @@ async function ensureSchema(): Promise<void> {
     
     CREATE INDEX IF NOT EXISTS idx_tenants_email ON tenants(email);
     CREATE INDEX IF NOT EXISTS idx_tenants_status ON tenants(subscription_status);
-    CREATE INDEX IF NOT EXISTS idx_tenants_tidio_website_id ON tenants(tidio_website_id);
+    CREATE INDEX IF NOT EXISTS idx_tenants_papercups_account_id ON tenants(papercups_account_id);
+  `);
+
+  // Add papercups_inbox_id column if it doesn't exist (for existing databases)
+  await p.query(`
+    ALTER TABLE tenants 
+    ADD COLUMN IF NOT EXISTS papercups_inbox_id VARCHAR(255);
+  `);
+
+  // Make papercups_account_id NOT NULL if it's not already (for existing databases)
+  await p.query(`
+    ALTER TABLE tenants 
+    ALTER COLUMN papercups_account_id SET NOT NULL;
   `);
 
   // Create api_keys table
@@ -181,16 +194,21 @@ async function createTenant(
   name: string,
   email: string,
   subscriptionPlan: string = 'basic',
-  crispWebsiteId?: string
+  papercupsAccountId: string,
+  papercupsInboxId?: string
 ): Promise<string> {
   const p = getPool();
   if (!p) throw new Error('Database not available');
   
+  if (!papercupsAccountId) {
+    throw new Error('Papercups account ID is required');
+  }
+  
   const result = await p.query(`
-    INSERT INTO tenants(name, email, subscription_plan, crisp_website_id)
-    VALUES($1, $2, $3, $4)
+    INSERT INTO tenants(name, email, subscription_plan, papercups_account_id, papercups_inbox_id)
+    VALUES($1, $2, $3, $4, $5)
     RETURNING id
-  `, [name, email, subscriptionPlan, crispWebsiteId]);
+  `, [name, email, subscriptionPlan, papercupsAccountId, papercupsInboxId]);
   
   return result.rows[0].id;
 }
@@ -206,24 +224,13 @@ async function getTenantById(tenantId: string): Promise<any> {
   return result.rows[0] || null;
 }
 
-async function getTenantByWebsiteId(websiteId: string): Promise<any> {
+async function getTenantByAccountId(accountId: string): Promise<any> {
   const p = getPool();
   if (!p) return null;
   
   const result = await p.query(`
-    SELECT * FROM tenants WHERE crisp_website_id = $1 AND is_active = true
-  `, [websiteId]);
-  
-  return result.rows[0] || null;
-}
-
-async function getTenantByTidioWebsiteId(websiteId: string): Promise<any> {
-  const p = getPool();
-  if (!p) return null;
-  
-  const result = await p.query(`
-    SELECT * FROM tenants WHERE tidio_website_id = $1 AND is_active = true
-  `, [websiteId]);
+    SELECT * FROM tenants WHERE papercups_account_id = $1 AND is_active = true
+  `, [accountId]);
   
   return result.rows[0] || null;
 }
@@ -322,8 +329,7 @@ export {
   saveLead,
   createTenant,
   getTenantById,
-  getTenantByWebsiteId,
-  getTenantByTidioWebsiteId,
+  getTenantByAccountId,
   getTenantByEmail,
   createApiKey,
   getApiKeyByHash,

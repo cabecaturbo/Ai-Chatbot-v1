@@ -14,9 +14,10 @@ graph TB
         WebsiteN[Business Website N]
     end
     
-    subgraph "Chat Platform (Choose One)"
-        Crisp[Crisp Chat Widgets]
-        Tidio[Tidio Chat Widgets]
+    subgraph "Papercups Infrastructure"
+        Papercups[Self-Hosted Papercups<br/>Elixir/Phoenix]
+        PapercupsDB[(Papercups Database<br/>PostgreSQL)]
+        PapercupsRedis[(Papercups Redis<br/>Real-time Features)]
     end
     
     subgraph "Netia AI Platform"
@@ -42,16 +43,12 @@ graph TB
     end
     
     %% Customer website interactions
-    Website1 --> Crisp
-    Website1 --> Tidio
-    Website2 --> Crisp
-    Website2 --> Tidio
-    WebsiteN --> Crisp
-    WebsiteN --> Tidio
+    Website1 --> Papercups
+    Website2 --> Papercups
+    WebsiteN --> Papercups
     
-    %% Chat platform to API
-    Crisp -->|Webhook| API
-    Tidio -->|Webhook| API
+    %% Papercups to API
+    Papercups -->|Webhook| API
     
     %% API internal connections
     API --> DB
@@ -65,6 +62,7 @@ graph TB
     
     %% External service connections
     API --> Email
+    API -->|Send Response| Papercups
     Web --> Stripe
 ```
 
@@ -82,18 +80,40 @@ graph TB
 - Multi-tenant architecture with API key authentication
 - Tenant-specific data isolation
 - Intent detection and AI response generation
-- Crisp webhook integration
+- Papercups webhook integration
 - Rate limiting and security measures
 - Prometheus metrics and monitoring
 
 **API Endpoints:**
 - `POST /api/v1/chat` - Public chat API (requires API key)
-- `POST /crisp/webhook` - Crisp integration (uses website_id for tenant identification)
-- `POST /tidio/webhook` - Tidio integration (uses conversation data for tenant identification)
+- `POST /papercups/webhook` - Papercups integration (uses account_id for tenant identification)
 - `GET /api/v1/health` - Health check
 - `GET /api/v1/metrics` - Prometheus metrics
 - `GET /api/v1/admin/*` - Admin management endpoints
 - `GET /api/v1/customer/*` - Customer portal endpoints
+
+### Papercups Infrastructure
+
+**Technology Stack:**
+- Elixir/Phoenix for real-time chat server
+- PostgreSQL for conversation and user data
+- Redis for real-time features and caching
+- Docker for containerized deployment
+
+**Key Features:**
+- Self-hosted chat widget infrastructure
+- Real-time messaging with WebSocket support
+- Multi-tenant account management
+- Customizable chat widget (React component)
+- Webhook support for external integrations
+- Team collaboration features
+- Conversation management and routing
+
+**Integration Points:**
+- Webhook notifications to our `/chat` API
+- Direct API calls for sending responses
+- Account-based tenant identification
+- Custom widget embedding for tenant websites
 
 ### Web Dashboard (`/web`)
 
@@ -116,7 +136,7 @@ graph TB
 **Core Tables:**
 ```sql
 -- Tenant management
-tenants (id, name, email, subscription_status, crisp_website_id, tidio_website_id, created_at)
+tenants (id, name, email, subscription_status, papercups_account_id, created_at)
 api_keys (id, tenant_id, key_hash, name, permissions, created_at)
 
 -- Tenant-specific data
@@ -133,17 +153,17 @@ knowledge_bases (id, tenant_id, content, updated_at)
 
 ### 1. Customer Website Interaction
 ```
-Website Visitor → Types message in chat widget (Crisp or Tidio)
+Website Visitor → Types message in Papercups widget
                 ↓
-            Chat Platform → Sends webhook to Netia API
+            Papercups Server → Sends webhook to Netia API
                 ↓
-            Netia API → Identifies tenant via website_id (Crisp) or conversation data (Tidio)
+            Netia API → Identifies tenant via account_id in payload
                 ↓
             Netia API → Processes with AI and tenant config
                 ↓
-            Netia API → Sends response back to chat platform
+            Netia API → Sends response back to Papercups
                 ↓
-            Chat Platform → Shows response to visitor
+            Papercups Server → Shows response to visitor
 ```
 
 ### 2. Admin/Customer Management
@@ -157,14 +177,52 @@ Admin/Customer → Logs into web dashboard
             Web Dashboard → Displays management interface
 ```
 
+## Simplified Multi-Tenant Architecture
+
+### Unified Token System
+The system uses Papercups account tokens as the primary identifier for all tenant operations:
+
+```mermaid
+graph LR
+    subgraph "Tenant Onboarding"
+        A[New Tenant] --> B[Create Papercups Account]
+        B --> C[Get Account Token]
+        C --> D[Store as API Key]
+    end
+    
+    subgraph "Widget Generation"
+        D --> E[Generate Widget Code]
+        E --> F[Embed Account Token]
+    end
+    
+    subgraph "API Authentication"
+        G[API Request] --> H[Extract Token]
+        H --> I[Lookup Tenant]
+        I --> J[Process Request]
+    end
+    
+    subgraph "Webhook Processing"
+        K[Papercups Webhook] --> L[Extract Account ID]
+        L --> M[Same Token Lookup]
+        M --> N[Route to Tenant]
+    end
+```
+
+### Benefits
+- **Simplified Architecture**: One token for all operations
+- **Automatic Isolation**: Papercups handles tenant separation
+- **Reduced Complexity**: No separate API key management
+- **Easier Debugging**: Single identifier across all systems
+
 ## Security Architecture
 
 ### Authentication & Authorization
-- **Website ID**: Tenant identification for Crisp webhook requests
-- **API Keys**: Tenant identification for direct API requests
+- **Unified Token System**: Papercups account tokens serve as both chat identifiers and API keys
+- **Single Source of Truth**: One token per tenant for all authentication needs
+- **Automatic Tenant Isolation**: Papercups handles tenant separation natively
 - **Neon Auth**: Passwordless magic link authentication for web dashboard
 - **Role-based Access**: Admin vs Customer permissions
-- **HMAC Verification**: Crisp webhook security
+- **HMAC Verification**: Papercups webhook security
 
 ### Data Protection
 - **Tenant Isolation**: Complete data separation between customers

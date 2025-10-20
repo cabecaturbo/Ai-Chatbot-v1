@@ -17,11 +17,10 @@ export interface EnvironmentConfig {
   OPENAI_API_KEY: string;
   OPENAI_MODEL: string;
 
-  // Crisp Integration
-  CRISP_WEBSITE_ID: string;
-  CRISP_IDENTIFIER: string;
-  CRISP_KEY: string;
-  CRISP_WEBHOOK_SECRET: string;
+  // Papercups Integration
+  PAPERCUPS_URL: string;
+  PAPERCUPS_API_KEY: string;
+  PAPERCUPS_WEBHOOK_SECRET: string;
 
   // Security
   JWT_SECRET: string;
